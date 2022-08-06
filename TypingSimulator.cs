@@ -3,9 +3,14 @@
 /// 
 namespace Monopoly_for_Nerds;
 using static Console;
-public class TypingSimulater
+public static class TypingSimulator
 {
-    static float overallSpeed = 3.5f;
+	static TypingSimulator()
+	{
+		//rng = new Random();
+	}
+	
+		static float overallSpeed = 1.5f;
 
 		static int pauseMin = 20;
 		static int pauseMax = 50;
@@ -17,7 +22,7 @@ public class TypingSimulater
 		static int punctuationBreakMax = 6;
 
 		static char[] pauses = { ' ', '.', ',', '?', '!', '$', '&', '*', '-', '=', '+', '@', '#', '%', '(', ')', '[', ']', '<', '>', '|', ':', ';', '/', '\\', '\'', '\"', '\n', '\t', '\r', '\b' };
-		static Random rng;
+		private static Random rng = new Random();
 
 		//static void Main(string[] args)
 		//{
@@ -37,11 +42,12 @@ public class TypingSimulater
 		//	Thread.Sleep(1000);
 		//}
 
-		public static void TypeOutText(string text, bool startDelay = true) => TypeOutText(text.ToCharArray(), startDelay);
-		static void TypeOutText(char[] charArray, bool startDelay = true)
+		public static string TypeOutText(string text, bool startDelay = true) => TypeOutText(text.ToCharArray(), startDelay);
+
+		private static string TypeOutText(char[] charArray, bool startDelay = true)
 		{
 			if (startDelay)
-				Thread.Sleep(1000);
+				Thread.Sleep(rng.Next(250, 1000));
 
 			for (int i = 0; i < charArray.Length; i++)
 			{
@@ -65,5 +71,9 @@ public class TypingSimulater
 
 				Thread.Sleep(sleep);
 			}
+			Thread.Sleep(rng.Next(250, 1000));
+
+			WriteLine();
+			return new string(charArray);
 		}
 }
