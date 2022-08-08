@@ -75,6 +75,7 @@ public static class Printer
     OnBuyProperty += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
     OnRentalPaid += (property, player, rental) => PrintPlayersPanel(currentLeft, currentTop);
     OnPlayerGetsOutOfJail += player => PrintPlayersPanel(currentLeft, currentTop);
+    OnCloseAuction += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
     //todo still have work to do here
     
     static void PrintPlayersPanel(int cursorLeft, int cursorTop)
@@ -453,11 +454,17 @@ public static class Printer
         OnStart += () => PrintCell(index, currentLeft, currentTop);
         OnMovingOnPlace += (place, player) => PrintCell(index, currentLeft, currentTop);
         
+        if (GetPlace(index) is Jail)
+            OnPlayerGetsOutOfJail += player => PrintCell(index, currentLeft, currentTop);
+        
         if (GetPlace(index) is Jail || GetPlace(index) is GotoJail)
             OnPlayerGetsToJail += player => PrintCell(index, currentLeft, currentTop);
         
-        if (GetPlace(index) is Property property)
-            OnBuyProperty += (player, property) => PrintCell(index, currentLeft, currentTop);
+        if (GetPlace(index) is Property){}
+        OnBuyProperty += (player, property) => PrintCell(index, currentLeft, currentTop);
+        
+        if (GetPlace(index) is Property){}
+        OnCloseAuction += (player, property) => PrintCell(index, currentLeft, currentTop);
 
         Write("       ");
         

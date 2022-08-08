@@ -11,17 +11,17 @@ public partial class Monopoly
             new Chest(2),
             new Street(3, "Street 3", 60, 50, new[] {4, 20, 60, 180, 320, 450}),
             new Tax(4, "Income Tax", 200),
-            new Railroad(5, "RailRoad 5"),
+            new Railroad(5, "RailRoad 5", 200),
             new Street(6, "Street 6",100, 50, new[] {6, 30, 90, 270, 400, 550}),
             new Chance(7),
             new Street(8, "Street 8", 100, 50, new[] {6, 30, 90, 270, 400, 550}),
             new Street(9, "Street 9", 120, 50, new[] {8, 40, 100, 300, 450, 600}),
             new Jail(10),
             new Street(11, "Street 11", 140, 100, new[] {10, 50, 150, 450, 625, 750}),
-            new Company(12, "Electricity"),
+            new Company(12, "Electricity", 150),
             new Street(13, "Street 13",140, 100, new[] {10, 50, 150, 450, 625, 750}),
             new Street(14, "Street 14", 160, 100, new[] {12, 60, 180, 500, 700, 900}),
-            new Railroad(15, "RailRoad 15"),
+            new Railroad(15, "RailRoad 15", 200),
             new Street(16, "Street 16",180, 100, new[] {14, 70, 200, 550, 750, 950}),
             new Chest(17),
             new Street(18, "Street 18",180, 100, new[] {14, 70, 200, 550, 750, 950}),
@@ -31,17 +31,17 @@ public partial class Monopoly
             new Chance(22),
             new Street(23, "Street 23",220, 150, new[] {18, 90, 250, 700, 875, 1050}),
             new Street(24, "Street 24",240, 150, new[] {20, 100, 300, 750, 925, 1100}),
-            new Railroad(25, "Railroad 25"),
+            new Railroad(25, "Railroad 25", 200),
             new Street(26, "Street 26",260, 150, new[] {22, 110, 330, 800, 975, 1150}),
             new Street(27, "Street 27",260, 150, new[] {22, 110, 330, 800, 975, 1150}),
-            new Company(28, "Water Work"),
+            new Company(28, "Water Work", 150),
             new Street(29, "Street 29",280, 150, new[] {24, 120, 360, 850, 1025, 1200}),
             new GotoJail(30),
             new Street(31, "Street 31",300, 200, new[] {26, 130, 390, 900, 1100, 1275}),
             new Street(32, "Street 32",300, 200, new[] {26, 130, 390, 900, 1100, 1275}), //Oxford
             new Chest(33),
             new Street(34, "Street 34",320, 200, new[] {28, 150, 450, 1000, 1200, 1400}),
-            new Railroad(35, "Railroad 35"),
+            new Railroad(35, "Railroad 35", 200),
             new Chance(36),
             new Street(37, "Street 37",350, 200, new[] {35, 175, 500, 1100, 1300, 1500}),
             new Tax(38, "Luxurious Tax", 100),
@@ -80,8 +80,9 @@ public partial class Monopoly
 
         public abstract class Property : Place
         {
-            protected Property(int index) : base(index)
+            protected Property(int index, int price) : base(index)
             {
+                Price = price;
             }
             
             private bool _mortgaged;
@@ -149,7 +150,7 @@ public partial class Monopoly
 
         public class Street : Property
         {
-            public Street(int index, string name, int price, int housePrice, int[] rental) : base(index)
+            public Street(int index, string name, int price, int housePrice, int[] rental) : base(index, price)
             {
                 Name = name;
                 Price = price;
@@ -157,7 +158,8 @@ public partial class Monopoly
                 _rental = rental;
             }
             private int _housePrice;
-            private int _houses = 0; public bool NoHouses => _houses == 0; public bool MaxHouses => _houses == 5;
+            private int _houses = 0; public bool NoHouses => _houses == 0; public bool MaxHouses => _houses == 5; public bool HasHouses => _houses > 0;
+
             private int[] _rental; //6
             public new bool CanBeMortgaged() => !IsMortgaged() && NoHouses;
             
@@ -209,7 +211,7 @@ public partial class Monopoly
 
         public class Railroad : Property
         {
-            public Railroad(int index, string name) : base(index)
+            public Railroad(int index, string name, int price) : base(index, price)
             {
                 Name = name;
             }
@@ -308,7 +310,7 @@ public partial class Monopoly
 
         private class Company : Property
         {
-            public Company(int index, string name) : base(index)
+            public Company(int index, string name, int price) : base(index, price)
             {
                 Name = name;
             }

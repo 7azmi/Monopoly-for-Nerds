@@ -40,7 +40,7 @@ public partial class Monopoly
 
         private Place _currentOccupation;
 
-        public ConsoleColor GetLabel() => _label;
+        public ConsoleColor GetLabel() => _label; 
         public void SetCurrentOccupation(Place place) => _currentOccupation = place;
         public Place GetCurrentOccupation() => _currentOccupation;
 

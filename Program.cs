@@ -9,11 +9,13 @@ using static System.Console;
 using static Monopoly_for_Nerds.Printer;
 using static Monopoly_for_Nerds.TypingSimulator;
 using static Monopoly_for_Nerds.Monopoly.Player;
+using static Monopoly_for_Nerds.Monopoly.Auction;
 
 var players = new[]
 {
     new Player("nGAGEOnline", ConsoleColor.Red, 1500, false),
     new Player("Cear", ConsoleColor.Yellow, 1500, true),
+    new Player("Ahmed", ConsoleColor.Cyan, 1500, true),
     //new Monopoly.Player("Ahmed", ConsoleColor.Green, 1500, true)
 };
 
@@ -198,7 +200,7 @@ void ConnectGameLogicWithCommands()
     }
     void AskPlayerToBuyPropertyOrPutItOnAuction(Player player, Property property)
     {
-        Log($"you landed on unowned property. you have to either 'buy' {property.GetName()} for {property.GetPrice()} or put it on 'auction'");
+        Log($"you landed on unowned property. you have to either 'buy' {property.GetName()} for {property.GetPrice()} or 'bid' for auction");
         
         string line;
 
@@ -211,7 +213,7 @@ void ConnectGameLogicWithCommands()
             if (!buyProperty.IsLegal()) goto tryAgain;
             buyProperty.Execute();
         } 
-        else if (line.Contains("auction"))
+        else if (line.Contains("bid"))
         {
             new Player.OpenAuction(property).Execute();
         } 
@@ -226,9 +228,10 @@ void ConnectGameLogicWithCommands()
     }
     void AskPlayersToBid(Property property)
     {
-        Log($"'bid ###' for {property.GetName()}, or 'fold'");
+        Log($"bid '##' for {property.GetName()}, or 'fold'");
 
-        List<Player> bidders = ActivePlayers;
+        List<Player> bidders  = new List<Player>(ActivePlayers);
+
         bidders.Reverse();
         
         string line;
@@ -238,7 +241,7 @@ void ConnectGameLogicWithCommands()
             
             for (int i = bidders.Count - 1; i >= 0; i--)
             {
-                if (bidders.Count == 1) break;
+                if (bidders.Count == 1 && MostBidder != null) break;
                 tryAgain:
                 
                 Write($"{bidders[i].GetName()}: ");
@@ -246,28 +249,21 @@ void ConnectGameLogicWithCommands()
 
                 if (line.Contains("fold"))
                     bidders.RemoveAt(i);
-                else if (line.Contains("bid"))
-                {
-                    if (int.TryParse(new String(line.Where(Char.IsDigit).ToArray()), out int value))
-                    {
-                        var bid = new Player.Bid(bidders[i], value);
-                        if (bid.IsLegal()) bid.Execute();
-                        else goto tryAgain;//you can't bid less you dumb!
-                    }else goto tryAgain;
-                } else goto tryAgain;
+                else if (!TryExecuteBidCommand(bidders[i], line)) goto tryAgain;
             }
         }
 
         bidders.First().CloseAuction(property); 
-            
+        
         string BotRead(Player bot)
         {
+            var newBid = MostBid + new Random().Next(5, 75);
             //do some typing here
-            if (Auction.MostBid > property.GetPrice() || !bot.HasEnoughMoney(Auction.MostBid+5))
+            if (MostBid > property.GetPrice() || !bot.HasEnoughMoney(newBid))
             {
-                return "fold";
+                return TypeOutText("fold");
             }
-            return "bid "+ (Auction.MostBid+5).ToString();
+            return TypeOutText(newBid.ToString());
         }
         void Test()
         {
@@ -336,77 +332,96 @@ void ConnectGameLogicWithCommands()
 
             if (line.Contains("end"))
                 new Player.EndTurn(player).Execute();
-            else if (!ManageProperties(player, line)) goto tryAgain2;
-        }
+            else
+            {
+                TryExecuteManagePropertyCommand(player, line);
+                goto tryAgain2;
+            }
         }
         
         string BotRead(string command)
         {
-            //do some typing here
             return TypeOutText(command);
         }
-        
-
-
     }
-bool ManageProperties(Player player, string line)
+}
+bool TryExecuteBidCommand(Player player, string line)
+{
+    var isLegalCommand = TryGetBidCommand(player, line, out var command);
+    if (isLegalCommand) command.Execute();
+
+    return isLegalCommand;
+
+    bool TryGetBidCommand(Player bidder, string line, out Command command)
     {
-        var isLegalCommand = TryCommand(player, line, out var command);
-        if(isLegalCommand) command.Execute();
+        command = null;
         
-        return false;
+        if (!TryToGetDigits(line, out var bid)) return false;
+
+        command = new Bid(bidder, bid);
+
+        return command != null ? command.IsLegal() : false;
+    }
+}
+bool TryExecuteManagePropertyCommand(Player player, string line)
+{
+    var isLegalCommand = TryGetPropertyManagementCommand(player, line, out var command);
+    if(isLegalCommand) command.Execute();
+    
+    return isLegalCommand;
+    
+    bool TryGetPropertyManagementCommand(Player player, string line, out Command command)
+    {
+        command = null;
+
+        string[] commands = {"buy house", "sell house", "unmort", "mort"};//followed by digits
+
+        if (!TryToGetDigits(line, out var i) || !InBounds(i)) return false;
+
+        var isStreet = TryToGetStreet(i, out var street);
+
+        if (line.Contains(commands[0]) && isStreet) command = new BuildHouse(player, street);
+        else if (line.Contains(commands[1]) && isStreet) command = new SellHouse(player, street);
         
-        bool TryCommand(Player player, string line, out Command command)
+        var isProperty = TryToGetProperty(i, out var property);
+        
+        if (line.Contains(commands[2]) && isProperty) command = new UnmortgageProperty(player, property);
+        else if (line.Contains(commands[3]) && isProperty) command = new MortgageProperty(player, property);
+            
+        
+        return command != null ? command.IsLegal() : false;
+        
+        //lovely checkers
+        bool TryToGetProperty(int i, out Property property)
+        { 
+            property = InBounds(i) && GetPlace(i) is Property? GetPlace(i) as Property : null;
+
+            if(property == null) WriteLine(GetPlace(i).GetName() + " is not a property");
+
+            return property != null;
+        }
+        bool TryToGetStreet(int i, out Street street)
         {
-            command = null;
+            street = InBounds(i) && GetPlace(i) is Street? GetPlace(i) as Street : null;
 
-            if (!TryToGetDigits(line, out var i)) return false;
-            if (!InBounds(i)) return false;
+            if(street == null) WriteLine(GetPlace(i).GetName() + " is not a street you dumb");
+            return street != null;
+        }
+        bool InBounds(int i)//board length
+        {
+            if (i >= 0 && i < 40) return true;
             
-            var isStreet = TryToGetStreet(i, out var street);
-            var isProperty = TryToGetProperty(i, out var property);
-            
-            string[] commands = {"buy house", "sell house", "unmort", "mort"};//followed by digits
-
-            if (line.Contains(commands[0]) && isStreet) command = new BuildHouse(player, street);
-            else if (line.Contains(commands[1]) && isStreet) command = new SellHouse(player, street);
-            else if (line.Contains(commands[2]) && isProperty) command = new UnmortgageProperty(player, property);
-            else if (line.Contains(commands[3]) && isProperty) command = new MortgageProperty(player, property);
-                
-
-            return command != null ? command.IsLegal() : false;
-            
-            //lovely checkers
-            bool TryToGetProperty(int i, out Property property)
-            { 
-                property = InBounds(i) && GetPlace(i) is Property? GetPlace(i) as Property : null;
-
-                if(property == null) WriteLine(GetPlace(i).GetName() + " is not a property");
-
-                return property != null;
-            }
-            bool TryToGetStreet(int i, out Street street)
-            {
-                street = InBounds(i) && GetPlace(i) is Street? GetPlace(i) as Street : null;
-
-                if(street == null) WriteLine(GetPlace(i).GetName() + " is not a street you dumb");
-                return street != null;
-            }
-            bool InBounds(int i)//board length
-            {
-                if (i >= 0 && i < 40) return true;
-                
-                WriteLine("wrong index");
-                return false;
-            }
-            bool TryToGetDigits(string line, out int value)
-            {
-                var areDigits = int.TryParse(new String(line.Where(char.IsDigit).ToArray()), out var digits);
-
-                //if(!areDigits) 
-                value = digits;
-            
-                return areDigits;
-            }
+            WriteLine("wrong index");
+            return false;
         }
     }
+}
+static bool TryToGetDigits(string line, out int value)
+{
+    var areDigits = int.TryParse(new String(line.Where(char.IsDigit).ToArray()), out var digits);
+
+    //if(!areDigits) 
+    value = digits;
+
+    return areDigits;
+}

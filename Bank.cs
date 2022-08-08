@@ -110,6 +110,15 @@ public static class Bank//to be modified
         OnRentalPaid?.Invoke(property, victim, rental);
     }
 
+    public static void OpenAuction(this Property onSale)
+    {
+        Auction.OpenAuction(onSale);
+        
+        WriteLine($"{onSale.GetName()} is on sale. Let's see who bids most!");
+
+        OnAuction?.Invoke(OnSale);
+    }
+    
     public static void Bid(this Player bidder, Property onSale, int newBid)
     {
         MostBidder = bidder;
@@ -120,13 +129,22 @@ public static class Bank//to be modified
 
     public static void CloseAuction(this Player winner, Property property)
     {
-        winner.SpendMoney(MostBid);
-        winner.AddProperty(property);
-        property.SetOwner(winner);
+        if (MostBid != 0)
+        {
+            winner.SpendMoney(MostBid);
+            winner.AddProperty(property);
+            property.SetOwner(winner);
         
-        WriteLine($"{MostBidder} wins {property.GetName()} for ${MostBid}");
-        
+            WriteLine($"{MostBidder.GetName()} wins {property.GetName()} for ${MostBid}");
+        } 
+        else CancelAuction();
+
         OnCloseAuction?.Invoke(winner, property);
+
+        void CancelAuction()
+        {
+            WriteLine("No one bids! strange.");
+        }
     }
     
     public static void Move(this Player player, Place[] steps)

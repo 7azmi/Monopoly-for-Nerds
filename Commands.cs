@@ -144,7 +144,7 @@ public partial class Monopoly
             {
                 if (!IsLegal()) return;
                 
-                OnAuction?.Invoke(_property);
+               _property.OpenAuction();
             }
 
             public override bool IsLegal()
@@ -175,7 +175,7 @@ public partial class Monopoly
                 if (_newBidding <= Auction.MostBid)
                 {
                     if (_newBidding < Auction.MostBid) WriteLine("you can't bid less you dummy");
-                    else WriteLine("you need to bid more");
+                    else WriteLine("you need to bid more the current bid");
                     return false;
                 }
                 return true;
@@ -280,6 +280,7 @@ public partial class Monopoly
                     return false;
                 }
 
+                
                 if (false)//todo if there is houses on...
                 {
                     
@@ -332,6 +333,7 @@ public partial class Monopoly
 
             public override void Execute()
             {
+                
                 if (!IsLegal()) return;
 
                 _player.MortgageProperty(_property);
@@ -342,6 +344,11 @@ public partial class Monopoly
                 if (!_player._properties.Contains(_property))
                 {
                     WriteLine("you don't own this property");
+                    return false;
+                }
+                if (_property is Street street && street.HasHouses)
+                {
+                    WriteLine("you can't mortgage a street with houses, sell them first");
                     return false;
                 }
                 if (_property.IsMortgaged())

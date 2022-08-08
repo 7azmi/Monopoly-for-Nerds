@@ -22,7 +22,7 @@ public static class TypingSimulator
 		static int punctuationBreakMax = 6;
 
 		static char[] pauses = { ' ', '.', ',', '?', '!', '$', '&', '*', '-', '=', '+', '@', '#', '%', '(', ')', '[', ']', '<', '>', '|', ':', ';', '/', '\\', '\'', '\"', '\n', '\t', '\r', '\b' };
-		private static Random rng = new Random();
+		private static Random rng = new ();
 
 		//static void Main(string[] args)
 		//{
@@ -73,6 +73,8 @@ public static class TypingSimulator
 			}
 			Thread.Sleep(rng.Next(250, 1000));
 
+			//rng = new Random(1);
+			
 			WriteLine();
 			return new string(charArray);
 		}

@@ -16,7 +16,6 @@ public partial class Monopoly
             OnMovingOnPlace += MovingOnPlace;
             OnLandingOnUnownedProperty += LandingOnUnownedProperty;
             OnRentalDue += LandingOnOwnedProperty;
-            OnAuction += Auction;
             //OnDiceReadyForRolling += DiceReadyForRolling;
             OnDiceRolled += times =>
             {
@@ -121,10 +120,6 @@ public partial class Monopoly
             
         }
         static void LandingOnOwnedProperty(Property property, Player victim, int rental)
-        {
-            
-        }
-        static void Auction(Property onSale)
         {
             
         }

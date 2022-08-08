@@ -39,8 +39,6 @@ public partial class Monopoly
             OnSale = onSale;
             MostBidder = null;
             MostBid = 0;
-            
-            OnAuction?.Invoke(onSale);
         }
     }
 }
