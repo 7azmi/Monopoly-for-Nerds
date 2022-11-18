@@ -1,7 +1,8 @@
 ﻿///Created by nGAGEOnline
 ///https://www.youtube.com/c/MMOJunkie
 /// 
-namespace Monopoly_for_Nerds;
+namespace MonopolyTerminal;
+
 using static Console;
 public static class TypingSimulator
 {

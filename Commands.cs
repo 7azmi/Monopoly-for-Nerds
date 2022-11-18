@@ -1,7 +1,9 @@
-﻿namespace Monopoly_for_Nerds;
-using static Monopoly.Engine;
-using static Monopoly.Board;
-using static Console;
+﻿using MonopolyTerminal.Enums;
+using static MonopolyTerminal.Monopoly.Engine;
+using static MonopolyTerminal.Monopoly.Board;
+using static System.Console;
+namespace MonopolyTerminal;
+
 public partial class Monopoly
 {
     
@@ -23,7 +25,7 @@ public partial class Monopoly
             public override void Execute()
             {
                 if (!IsLegal()) return;
-
+                
                 Dice.Roll();
             }
 
@@ -42,14 +44,14 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnDiceReady
 
         public class BuyProperty : Command
         {
             private Property _property;
-            public BuyProperty(Player player, Property property)
+            public BuyProperty(Property property)
             {
-                _player = player;
+                _player = WhoseTurn;
                 _property = property;
             } 
 
@@ -75,8 +77,24 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnlandingOnUnownedProperty
 
+        public static Command Pay(Player victim, PaymentReason reason, int value)
+        {
+            switch (reason)
+            {
+                case PaymentReason.Rental:
+                    return new PayRent(victim, victim._currentOccupation as Property);
+                    break;
+                case PaymentReason.Bid:
+                    
+                    break;
+                case PaymentReason.BankFees:
+                    break;
+            }
+
+            return null;
+        } 
         public class PayRent : Command
         {
             private Property _property;
@@ -103,7 +121,7 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnRentalDue
 
         public class EndTurn : Command
         {
@@ -130,7 +148,7 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnTurn
 
         public class OpenAuction : Command
         {
@@ -144,14 +162,14 @@ public partial class Monopoly
             {
                 if (!IsLegal()) return;
                 
-               _property.OpenAuction();
+                _property.OpenAuction();
             }
 
             public override bool IsLegal()
             {
                 return true;//always
             }
-        }
+        }//OnBuyOrBid
 
         public class Bid : Command
         {
@@ -180,7 +198,7 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnAuction
 
         public class GetOutOfJail : Command
         {
@@ -213,7 +231,7 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnTurn
 
         public class StayInJail : Command
         {
@@ -236,7 +254,7 @@ public partial class Monopoly
                 return true;//you can't stay in jail three times, that's why you get out for free the third time
                 //no need for that roll for double feature
             }
-        }
+        }//OnTurn
 
         public class BuildHouse : Command
         {
@@ -287,7 +305,7 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnTurn
 
         public class SellHouse : Command
         {
@@ -321,7 +339,7 @@ public partial class Monopoly
                 
                 return true;
             }
-        }
+        }//OnTurn
         public class MortgageProperty : Command
         {
             private Property _property;
@@ -358,7 +376,7 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnTurn
 
         public class UnmortgageProperty : Command
         {
@@ -395,51 +413,223 @@ public partial class Monopoly
                 }
                 return true;
             }
-        }
+        }//OnTurn
 
         public class SetOffer : Command
         {
-            public SetOffer(Player player) => _player = player;
+            private Offer _offer;
+            private Player Target => _player;
+            public SetOffer(Player target, Offer offer)
+            {
+                //if target is not given then check if there is only one opponent to set
+                //If not, return first offered property's owner if given, set null otherwise.
+                _player = target is null ? ActivePlayers.Count ==2 ? GetOpponent(WhoseTurn) : offer.PropertiesToOffer is null ? null: offer.PropertiesToOffer.First().GetOwner() : target;
+                
+                _offer = offer;
+                
+                Player GetOpponent(Player player) => ActivePlayers.FirstOrDefault(p => p != player);
+
+            }
 
             public override void Execute()
             {
                 if (!IsLegal()) return;
                 
-                
+                WhoseTurn.SetOffer(_player, _offer);
             }
 
             public override bool IsLegal()
             {
+                WriteLine("do you hear me???");
+                ///can be legal only if
+                ///there are both-parts assets (money or properties at least)
+                ///target is chosen
+                ///chosen properties are owned by their actual owners
+                ///both players have enough money if included
+                ///both sides don't present streets with houses 
+
+                if (!IsCorrectDealStructure()) 
+                    return false;
+                
+                if (_player is null)
+                {
+                    WriteLine("the computer still cannot identify your opponent from the given offer");
+                    WriteLine("you need to include your opponent's special letter");
+                    return false;
+                }
+                
+                if (!AreSelectedPropertiesOwnedByTheirOwners())
+                    return false;
+
+                if (!BothSidesHaveEnoughMoney())
+                    return false;
+                if (!BothDoNotPresentStreetWithHouses())
+                    return false;
+                
+                WriteLine("yes you can");
+
                 return true;
+
+                bool IsCorrectDealStructure()
+                {
+                    var moneyIsOffered = _offer.MoneyToOffer > 0;
+                    var moneyIsRequested = _offer.MoneyToRequest > 0;
+                    var aPropertyIsOffered = !(_offer.PropertiesToOffer == null || _offer.PropertiesToOffer.Length ==0);//todo null or empty helper
+                    var aPropertyIsRequested = !(_offer.PropertiesToRequest == null || _offer.PropertiesToRequest.Length ==0);
+                    var offerorOffersSomething = moneyIsOffered || aPropertyIsOffered;
+                    var offerorRequestsSomething = moneyIsRequested || aPropertyIsRequested;
+                    var bothSidesPresentMoney = moneyIsOffered && moneyIsRequested;
+                    var bothSidesPresentProperties = aPropertyIsOffered && aPropertyIsRequested;
+                    var bothSidesPresentMoneyOnly = bothSidesPresentMoney && !bothSidesPresentProperties;
+                    var bothSidesPresentPropertiesOnly = !bothSidesPresentMoney && bothSidesPresentProperties;
+                    var bothSidesPresentSomethingToTrade = offerorOffersSomething && offerorRequestsSomething;
+
+                    if (bothSidesPresentSomethingToTrade && !bothSidesPresentMoneyOnly) return true;
+                    
+                    else if (bothSidesPresentMoneyOnly)
+                    {
+                        if(_offer.MoneyToOffer < _offer.MoneyToRequest) WriteLine("https://bit.ly/3K6D5Pj");
+                        else if (_offer.MoneyToOffer > _offer.MoneyToRequest) return true;//trolling
+                    }else if(offerorRequestsSomething && !offerorOffersSomething) WriteLine("you can't demand something for nothing!");
+                    else if (!offerorRequestsSomething && offerorOffersSomething)
+                    {
+                        WriteLine("!you can't demand nothing for something");
+                        //return true;//trolling
+                    }
+
+                    WriteLine("offer structure error, try again");
+                    return false;
+                }
+
+                bool AreSelectedPropertiesOwnedByTheirOwners()
+                {
+                    var allRequestedPropertiesHaveTheSameOwner =
+                        _offer.PropertiesToRequest.All(property => property.GetOwner() == Target);
+                    var allOfferedPropertiesOwnedByOfferor =
+                        _offer.PropertiesToOffer.All(property => property.GetOwner() == WhoseTurn);
+
+                    if (allOfferedPropertiesOwnedByOfferor && allRequestedPropertiesHaveTheSameOwner) return true;
+                    
+                    WriteLine("Ownership error");//todo write possible errors
+                    return false;
+                    /*
+                 * 
+                if(_offer.PropertiesToOffer != null)
+                    foreach (var property in _offer.PropertiesToOffer)
+                    {
+                        if (property.GetOwner() == null)
+                        {
+                            WriteLine($"{property.GetName()} is not acquired yet, you think you can get it from the bank?");
+                            return false;
+                        }
+                        else if(property.GetOwner() != _offer.Target)
+                    }
+
+                return false;
+                                     */
+                }
+
+                bool BothSidesHaveEnoughMoney()
+                {
+                    var offerorHasEnoughMoney = WhoseTurn.HasEnoughMoney(_offer.MoneyToOffer);
+                    var offereeHasEnoughMoney = Target.HasEnoughMoney(_offer.MoneyToRequest);
+
+                    if (offereeHasEnoughMoney && offerorHasEnoughMoney) return true;
+                    
+                    if(!offereeHasEnoughMoney) WriteLine("your opponent can't accept a deal where you demand more money than he actually has");
+                    if(offerorHasEnoughMoney) WriteLine("you can't offer money you don't have :)");
+                    
+                    WriteLine("hello2");
+                    return false;
+                }
+
+                bool BothDoNotPresentStreetWithHouses()
+                {
+                    var offerorOffersStreetWithHouses =
+                        _offer.PropertiesToOffer.Any(property => property is Street s && s.HasHouses);
+                    
+                    var offerorRequestsStreetWithHouses =
+                        _offer.PropertiesToRequest.Any(property => property is Street s && s.HasHouses);
+
+                    if (!offerorOffersStreetWithHouses && !offerorRequestsStreetWithHouses) return true;
+                    if(offerorOffersStreetWithHouses) WriteLine("you can't offer nor request a street invested with houses. are you dumb?");
+                    if(offerorRequestsStreetWithHouses) WriteLine("you can't offer nor request a street invested with houses");
+
+                    WriteLine("hello3");
+
+                    return false;
+                }
             }
-        }
+            public struct Offer
+            {
+                public Offer(Property[] propertiesToOffer, Property[] propertiesToRequest, int moneyToOffer = 0, int moneyToRequest = 0)
+                {
+                    PropertiesToOffer = propertiesToOffer;
+                    MoneyToOffer = moneyToOffer;
+                    PropertiesToRequest = propertiesToRequest;
+                    MoneyToRequest = moneyToRequest;
+                }
+                internal Property[] PropertiesToOffer;
+                internal int MoneyToOffer;
+                internal Property[] PropertiesToRequest;
+                internal int MoneyToRequest;
+
+                public string offerInfo()
+                {
+                    string info = "";
+                    foreach (var p in PropertiesToOffer) info += $"- {p.GetName()}\n";
+                    info += $"- ${MoneyToOffer}\n";
+
+                    info += "for\n";
+                    
+                    foreach (var p in PropertiesToRequest) info += $"- {p.GetName()}\n";
+                    info += $"- ${MoneyToRequest}\n";
+                    return info;
+                }
+            }
+            
+            
+
+        }//OnTurn
 
         public class AcceptOffer : Command
         {
-            public AcceptOffer(Player player) => _player = player;
+            private Player _offeror;
+            private SetOffer.Offer _offer;
+            public AcceptOffer(Player offeree , Player offeror, Player.SetOffer.Offer offer)
+            {
+                _player = offeree;
+                _offeror = offeror;
+                _offer = offer;
+            }
 
             public override void Execute()
             {
                 if (!IsLegal()) return;
-
-
+                
+                _player.AcceptOffer(_offeror, _offer);
             }
 
             public override bool IsLegal()
             {
-                return true;
+                return true;//should be able to accept
             }
-        }
+        }//OnReceiveDeal
 
-        public class RefuseOffer : Command
+        public class DeclineOffer : Command
         {
-            public RefuseOffer(Player player) => _player = player;
+            private Player _offeror;
+            public DeclineOffer(Player offeree, Player offeror)    
+            {
+                _player = offeree;
+                _offeror = offeror;
+            } 
 
             public override void Execute()
             {
                 if (!IsLegal()) return;
 
-                
+                _player.DeclineOffer(_offeror);
             }
 
             public override bool IsLegal()
@@ -447,7 +637,7 @@ public partial class Monopoly
                 return true;
             }
             
-        }
+        }//OnReceiveDeal
 
         public class DeclareBankruptcy : Command
         {
@@ -465,7 +655,7 @@ public partial class Monopoly
                 return true;
             }
             
-        }
+        }//OnTurn
 
         public class Quit : Command //noooooooo
         {

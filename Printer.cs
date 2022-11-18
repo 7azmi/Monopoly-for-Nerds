@@ -1,4 +1,4 @@
-﻿namespace Monopoly_for_Nerds;
+﻿namespace MonopolyTerminal;
 using static Monopoly.Engine;
 using static Monopoly.Board;
 using static Monopoly;
@@ -58,6 +58,9 @@ public static class Printer
     #region Print Board
 
     SetWindowSize(140, 50);
+
+    Cards.Init();
+    Terminal.ConsoleRenderer.InitDiceRenderer();
     
     //Console.WriteLine("|iyfurtp|Strand |Chance |Fleet S|Traf Sq|Fench S|Leic Sq|Covent |Water  |Pcdly  |Bonk   |");
     for (int i = 20; i <= 30; i++)
@@ -71,11 +74,16 @@ public static class Printer
     var currentTop = CursorTop;
 
     OnInitialization += monopoly => PrintPlayersPanel(currentLeft, currentTop);
-    OnNextPlayerTurn += player => PrintPlayersPanel(currentLeft, currentTop);
-    OnBuyProperty += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
+    OnPlayerTurn += player => PrintPlayersPanel(currentLeft, currentTop);
+    OnBuyProperty += (property) => PrintPlayersPanel(currentLeft, currentTop);
     OnRentalPaid += (property, player, rental) => PrintPlayersPanel(currentLeft, currentTop);
     OnPlayerGetsOutOfJail += player => PrintPlayersPanel(currentLeft, currentTop);
     OnCloseAuction += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
+    OnPlayerMortgage += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
+    OnPlayerUnmortgage += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
+    OnPlayerBuyHouse += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
+    OnPlayerSellHouse += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
+    OnAcceptOffer += (_, _, _) => PrintPlayersPanel(currentLeft, currentTop);
     //todo still have work to do here
     
     static void PrintPlayersPanel(int cursorLeft, int cursorTop)
@@ -122,7 +130,9 @@ public static class Printer
     } 
     Border();
     WriteLine();
-
+    
+    Cards.GetCompanyCardInfo(GetPlace(12) as Company);
+    
     for (int left = 19, right =31; left >= 11 && right <= 39; left--, right++)//left(19, 11), right(31, 39)
     {
         //Console.WriteLine("|Vine St|                                                                       |Regent |");
@@ -131,12 +141,13 @@ public static class Printer
         Border(); PlaceName(right); Border();
         WriteLine();
 
+        
+        
         //Console.WriteLine("|       |                                                                       |       |");
         Border(); PrintCell(left); Border();
         Write("                                                                       ");//body
         Border(); PrintCell(right); Border();
         WriteLine();
-    
         //Console.WriteLine("|19-----|                                                                       |31-----|");
         Border(); PropertyInfo(left); Border();
         Write("                                                                       ");//body
@@ -344,8 +355,10 @@ public static class Printer
     //var currentLeft = Console.CursorLeft; //0
     var currentTop2 = CursorTop;
 
-    OnNextPlayerTurn += player => Clear(currentTop2);
+    OnPlayerTurn += player => Clear(currentTop2);
 
+    Terminal.ConsoleRenderer.RenderDoge();
+    
     void Clear(int cursorTop)
     {
         //var currentLeft = Console.CursorLeft;
@@ -379,70 +392,147 @@ public static class Printer
     void PlaceName(int index)
     {
         SetPropertyConsoleColor(index);
-        Console.Write(names[index].PadRight(CellPadding));
+        Write(names[index].PadRight(CellPadding));
         
         void SetPropertyConsoleColor(int index)
         {
             switch (index)
             {
                 default:
-                    Console.ResetColor();
+                    ResetColor();
                     break;
             
                 case 1:
                 case 3:
-                    Console.BackgroundColor = ConsoleColor.DarkGray;
+                    BackgroundColor = ConsoleColor.DarkGray;
                     break;
                 case 6:
                 case 8:
                 case 9:
-                    Console.BackgroundColor = ConsoleColor.DarkCyan;
+                    BackgroundColor = ConsoleColor.DarkCyan;
                     break;
 
                 case 11:
                 case 13:
                 case 14:
-                    Console.BackgroundColor = ConsoleColor.DarkMagenta;
+                    BackgroundColor = ConsoleColor.DarkMagenta;
                     
                     break;
                 case 16:
                 case 18:
                 case 19:
-                    Console.BackgroundColor = ConsoleColor.White;
+                    BackgroundColor = ConsoleColor.White;
                     break;
                 
                 case 21:
                 case 23:
                 case 24:
-                    Console.BackgroundColor = ConsoleColor.DarkRed;
+                    BackgroundColor = ConsoleColor.DarkRed;
                     break;
                 
                 case 26:
                 case 27:
                 case 29:
-                    Console.BackgroundColor = ConsoleColor.DarkYellow;
+                    BackgroundColor = ConsoleColor.DarkYellow;
                     break;
                 
                 case 31:
                 case 32:
                 case 34:
-                    Console.BackgroundColor = ConsoleColor.DarkGreen;
+                    BackgroundColor = ConsoleColor.DarkGreen;
                     break;
                 
                 case 37:
                 case 39:
-                    Console.BackgroundColor = ConsoleColor.DarkBlue;
+                    BackgroundColor = ConsoleColor.DarkBlue;
                     break;
             }
         }
     }
 
-    void PropertyInfo(int index)
+    void PropertyInfo(int index)//todo requires refactoring
     {
-        if(index <10)
-            Write(index+"------");
-        else
-            Write(index+"-----");
+        
+        
+        var cell = index.ToString().PadRight(CellPadding-1);
+        
+        for (int i = 0; i < CellPadding-1; i++)
+        {
+            Write(cell[i] ==' ' ? "-": cell[i]);
+        }
+
+        var currentLeft = CursorLeft;
+        var currentTop = CursorTop;
+        
+        if (GetPlace(index) is Property) OnPlayerMortgage += (player, property) => WritePropertyState(index, currentLeft, currentTop);
+        if (GetPlace(index) is Property) OnPlayerUnmortgage += (player, property) => WritePropertyState(index, currentLeft, currentTop);
+        if (GetPlace(index) is Street) OnPlayerBuyHouse += (player, street) => WritePropertyState(index, currentLeft, currentTop);
+        if (GetPlace(index) is Street) OnPlayerSellHouse += (player, street) => WritePropertyState(index, currentLeft, currentTop);
+        
+        
+        Write("-");
+        
+        void WriteHousesNumber(int index, int cursorLeft, int cursorTop)
+        {
+            var currentLeft = CursorLeft;
+            var currentTop = CursorTop;
+
+            CursorLeft = cursorLeft;
+            CursorTop = cursorTop;
+            
+            
+            
+            var street = GetPlace(index) as Street;
+            if (street.HasHouses)
+            {
+                var currentColor = BackgroundColor;
+                BackgroundColor = ConsoleColor.DarkGreen;
+                Write(street.HouseCount);
+                BackgroundColor = currentColor;
+            } else Write("-");
+            
+            CursorLeft = currentLeft;
+            CursorTop = currentTop;
+        }
+
+        void WritePropertyState(int index, int cursorLeft, int cursorTop)
+        {
+            var currentLeft = CursorLeft;
+            var currentTop = CursorTop;
+
+            CursorLeft = cursorLeft;
+            CursorTop = cursorTop;
+
+            var property = GetPlace(index) as Property;
+
+            if (property is Street street)
+            {
+                if (street.HasHouses)
+                {
+                    var currentColor = BackgroundColor;
+                    BackgroundColor = ConsoleColor.DarkGreen;
+                    Write(street.HouseCount);
+                    BackgroundColor = currentColor;
+                } 
+                else if (street.IsMortgaged())
+                {
+                    var currentColor = BackgroundColor;
+                    BackgroundColor = ConsoleColor.DarkRed;
+                    Write("M");
+                    BackgroundColor = currentColor;
+                } else Write("-");
+            }
+            else if (property.IsMortgaged())
+            {
+                var currentColor = BackgroundColor;
+                BackgroundColor = ConsoleColor.DarkRed;
+                Write("M");
+                BackgroundColor = currentColor;
+            }else Write("-");
+            
+            CursorLeft = currentLeft;
+            CursorTop = currentTop;
+        }
     }
 }
 
@@ -461,11 +551,14 @@ public static class Printer
             OnPlayerGetsToJail += player => PrintCell(index, currentLeft, currentTop);
         
         if (GetPlace(index) is Property){}
-        OnBuyProperty += (player, property) => PrintCell(index, currentLeft, currentTop);
+        OnBuyProperty += (property) => PrintCell(index, currentLeft, currentTop);
         
         if (GetPlace(index) is Property){}
         OnCloseAuction += (player, property) => PrintCell(index, currentLeft, currentTop);
 
+        if (GetPlace(index) is Property){}
+        OnAcceptOffer += (_, _, _) => PrintCell(index, currentLeft, currentTop); 
+        
         Write("       ");
         
         //PrintCell(index, currentLeft, currentTop);//there is no active players at this point

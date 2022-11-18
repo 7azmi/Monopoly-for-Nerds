@@ -1,29 +1,32 @@
-﻿using System.ComponentModel;
-using System.Drawing;
-using System.Runtime.InteropServices;
-using Monopoly_for_Nerds;
-using static Monopoly_for_Nerds.Monopoly;
-using static Monopoly_for_Nerds.Monopoly.Engine;
-using static Monopoly_for_Nerds.Monopoly.Board;
+﻿using System.Runtime.InteropServices.ComTypes;
+using System.Text;
+using System.Text.RegularExpressions;
+using MonopolyTerminal;
+using MonopolyTerminal.Enums;
+using MonopolyTerminal.Helpers;
+using MonopolyTerminal.Human;
+using static MonopolyTerminal.Monopoly;
+using static MonopolyTerminal.Monopoly.Engine;
+using static MonopolyTerminal.Monopoly.Board;
 using static System.Console;
-using static Monopoly_for_Nerds.Printer;
-using static Monopoly_for_Nerds.TypingSimulator;
-using static Monopoly_for_Nerds.Monopoly.Player;
-using static Monopoly_for_Nerds.Monopoly.Auction;
-
-var players = new[]
-{
-    new Player("nGAGEOnline", ConsoleColor.Red, 1500, false),
-    new Player("Cear", ConsoleColor.Yellow, 1500, true),
-    new Player("Ahmed", ConsoleColor.Cyan, 1500, true),
-    //new Monopoly.Player("Ahmed", ConsoleColor.Green, 1500, true)
-};
+using static MonopolyTerminal.Printer;
+using static MonopolyTerminal.Monopoly.Player;
+using static MonopolyTerminal.Monopoly.Auction;
 
 PrintBoard();
 
+LateInit();
+
 ConnectGameLogicWithCommands();//terminal side
 
-var m = new Monopoly(players);//game side
+var m = new Monopoly(new GameSettings(
+    new []
+    {
+        new Player("nGAGEOnline", ConsoleColor.Red, 1500, new Shooter(new Terminal())),
+        new Player("Dumb Bot", ConsoleColor.Yellow, 1500, new Shooter(new Terminal())),
+        //new Player("Ahmed", ConsoleColor.Cyan, 1500, true),
+        //new Monopoly.Player("Ahmed", ConsoleColor.Green, 1500, true)
+    }));
 
 Log("Finished");
 
@@ -34,394 +37,412 @@ Read();
 
 void ConnectGameLogicWithCommands()
 {
-    OnPlayerTurnWhileInJail += AskPlayerToGetOutOrStay;
-    OnPlayerDecidesToStayInJail += player => AskPlayerToProceedPlaying();
-    OnDiceReadyForRolling += AskPlayerToRoll;
-    OnRentalDue += AskPlayerToPayRentOrDivest;
-    OnBuyProperty += (player, property) => AskPlayerToProceedPlaying();
-    OnLandingOnMyProperty += (player, property) => AskPlayerToProceedPlaying(); 
-    OnRentalPaid += (property, player, rentalValue) => AskPlayerToProceedPlaying();
-    OnCloseAuction += (player, property) => AskPlayerToProceedPlaying();
-    OnLandingCompleted +=(player, property) => AskPlayerToProceedPlaying();//todo refactor later
-    OnLandingOnUnownedProperty += AskPlayerToBuyPropertyOrPutItOnAuction;
-    OnAuction += AskPlayersToBid;
+    OnPlayerTurn += player => player.GetInput().OnTurn();
+    OnDiceReadyForRolling += (_) => WhoseTurn.GetInput().OnDiceReady();
+    OnPlayerTurnWhileInJail += (_) => WhoseTurn.GetInput().OnInJail();
+    //OnPlayerDecidesToStayInJail += _ => AskPlayerToProceedPlaying();
+    //OnRentalDue += (_, player, amount) => AskPlayerToPay(player, amount, PaymentReason.Rental);
+    //OnPlayerInDebt += (player, i) => AskPlayerToDivestForDuePaymentOrDeclareBankruptcy(player);
+    //OnBuyProperty += (_, _) => AskPlayerToProceedPlaying();
+    //OnLandingOnMyProperty += (_, _) => AskPlayerToProceedPlaying(); 
+    //OnRentalPaid += (_, _, _) => AskPlayerToProceedPlaying();
+    //OnCloseAuction += (_, _) => AskPlayerToProceedPlaying();
+    //OnLandingCompleted +=(place) => WhoseTurn.GetInput().
+    OnLandingOnUnownedProperty += (property) => WhoseTurn.GetInput().OnBuyOrBid(property);
+    OnTurnCompleted += () => WhoseTurn.GetInput().OnTurnCompleted();
+    //OnAuction += AskPlayersToBid;
+    //OnOffering += AskPlayerToAcceptOrDeclineOffer;
+    //OnAcceptOffer += (_, _, _) => AskPlayerToProceedPlaying();
+    //OnDeclineOffer += (_, _) => AskPlayerToProceedPlaying();
 
-    void AskPlayerToGetOutOrStay(Player prisoner)
+    // OnPlayerTurnWhileInJail += AskPlayerToGetOutOrStay;
+    // OnPlayerDecidesToStayInJail += _ => AskPlayerToProceedPlaying();
+    // OnDiceReadyForRolling += AskPlayerToRoll;
+    // //OnRentalDue += (_, player, amount) => AskPlayerToPay(player, amount, PaymentReason.Rental);
+    // OnPlayerInDebt += (player, i) => AskPlayerToDivestForDuePaymentOrDeclareBankruptcy(player);
+    // OnBuyProperty += (_, _) => AskPlayerToProceedPlaying();
+    // OnLandingOnMyProperty += (_, _) => AskPlayerToProceedPlaying(); 
+    // OnRentalPaid += (_, _, _) => AskPlayerToProceedPlaying();
+    // OnCloseAuction += (_, _) => AskPlayerToProceedPlaying();
+    // OnLandingCompleted +=(_, _) => AskPlayerToProceedPlaying();//todo refactor later
+    // OnLandingOnUnownedProperty += AskPlayerToBuyPropertyOrPutItOnAuction;
+    // OnAuction += AskPlayersToBid;
+    // OnOffering += AskPlayerToAcceptOrDeclineOffer;
+    // OnAcceptOffer += (_, _, _) => AskPlayerToProceedPlaying();
+    // OnDeclineOffer += (_, _) => AskPlayerToProceedPlaying();
+
+
+    #region Extract functions later
+
+    //     void AskPlayerToGetOutOrStay(Player prisoner)
+//     {
+//         //i.input.OnTurn.Invoke();
+//         Log("you are in jail, would you like to get 'out' for $50, or 'stay' this time?");
+//
+//         string line;
+//
+//         tryAgain:
+//         
+//         line = !prisoner.IsBot ? ReadLine() : prisoner.GetInput().GetOutOfJailOrStay(prisoner);
+//
+//         if (line.Contains("out"))
+//         {
+//             var getOut = new Player.GetOutOfJail(prisoner);
+//             if(!getOut.IsLegal()) goto tryAgain;
+//             getOut.Execute(); 
+//         }
+//         else if (line.Contains("stay"))
+//         {
+//             var stay = new Player.StayInJail(prisoner);
+//             if (!stay.IsLegal()) goto tryAgain;
+//             stay.Execute(); 
+//         } 
+//         else goto tryAgain;
+//     }
+//     void AskPlayerToRoll(int times, Player whoseTurn)
+//     {
+//         Log("'roll' the dice");
+//
+//         string line;
+//         do line = !whoseTurn.IsBot ? ReadLine() :whoseTurn.GetInput().RollDice();
+//         while (!line.Contains("roll"));
+//
+//         new Player.RollDice(whoseTurn).Execute();
+//     }
+//     //process here is duplicated but it's fine for the sake of not repeating logs
+//     void AskPlayerToDivestForDuePaymentOrDeclareBankruptcy(Player victim)
+//     {
+//         string line;
+//
+//         Log("'mortgage ##' or 'sell house ##' To proceed, or you can simply 'declare bankruptcy' :')");
+//
+//         tryAgain:
+//         
+//         line = !victim.IsBot ? ReadLine() : victim.GetInput().DivestOrDeclareBankruptcy();
+//         if (line.Contains("declare bankruptcy")) 
+//             new Player.DeclareBankruptcy(victim).Execute();
+//         else if(TryExecuteDivestPropertyCommand(victim, line) && victim.HasEnoughMoney(amount)) 
+//             new Player.PayRent(victim, property).Execute();
+//         else 
+//             goto tryAgain;
+//
+//     }
+//     
+//     void AskPlayerToBuyPropertyOrPutItOnAuction(Player player, Property property)
+//     {
+//         Log($"you landed on unowned property. you have to either 'buy' {property.GetName()} for {property.GetPrice()} or 'bid' for auction");
+//         
+//         string line;
+//
+//         tryAgain:
+//         line = !player.IsBot ? ReadLine() : player.GetInput().BuyOrBid(player, property);
+//
+//         if (line.Contains("buy"))
+//         {
+//             var buyProperty = new Player.BuyProperty(player, property);
+//             if (!buyProperty.IsLegal()) goto tryAgain;
+//             buyProperty.Execute();
+//         } 
+//         else if (line.Contains("bid"))
+//         {
+//             new Player.OpenAuction(property).Execute();
+//         } 
+//         else goto tryAgain;
+//     }
+//     void AskPlayersToBid(Property property)//roll
+//     {
+//         Log($"bid '##' for {property.GetName()}, or 'fold'");
+//
+//         List<Player> bidders  = new List<Player>(ActivePlayers);
+//         bidders.Reverse();//for a reversed for loop
+//         
+//         string line;
+//         while(true)//I can't read it again but it functions as I remember.
+//         {
+//             if (bidders.Count == 1) break;
+//             
+//             for (var i = bidders.Count - 1; i >= 0; i--)
+//             {
+//                 if (bidders.Count == 1 && MostBidder != null) break;
+//                 tryAgain:
+//                 
+//                 Write($"{bidders[i].GetName()}: ");
+//                 line = !bidders[i].IsBot ? ReadLine() : bidders[i].GetInput().BidOrFold(bidders[i], MostBid);
+//
+//                 if (line.Contains("fold"))
+//                     bidders.RemoveAt(i);
+//                 else if (!TryExecuteBidCommand(bidders[i], line)) goto tryAgain;
+//             }
+//         }
+//         if(bidders.IsNullOrEmpty()) Bank.CloseAuction(null, property);
+//         else bidders.First().CloseAuction(property);
+//     }
+//     void AskPlayerToProceedPlaying()//todo refactor this 
+//     {
+//         var player = WhoseTurn;
+//         
+//         if(!player.HasEnoughMoney(0))
+//         {
+//             var debt = (int) MathF.Abs(player.GetMoney());
+//             Log($"You need to normalize your balance: ${debt} before proceeding");
+//             OnPlayerInDebt.Invoke(player, debt);//nightmare
+//         }
+//         
+//         //roll again or end turn, you can also manage your properties and set deals
+//         if (!player.InJail && Dice.PlayerCanRollAgain())//bad logic but seems to work for now
+//         {
+//             string line;
+//             Log($"you got double {(Dice.GetDoubles() == 2 ? "twice": "")}, 'roll' again");
+//             tryAgain1:
+//
+//             do line = !player.IsBot ? ReadLine() : player.GetInput().RollAgain(Dice.GetDoubles());
+//             while (!line.Contains("roll"));
+//             new Player.RollDice(player).Execute();
+//         }
+//         else
+//         {
+//             string line;
+//             Log("You may manage your properties, set an 'offer', or 'end' your turn");
+//             tryAgain2:
+//             line = !player.IsBot ? ReadLine() : player.GetInput().EndTurnOrManagePropertiesOrSetOffer(player);
+//
+//             if (line.Contains("end")) new Player.EndTurn(player).Execute();
+//             else if (line.Contains("offer"))//todo can be refactored
+//             {
+//                 TryExecuteSetOfferCommand(WhoseTurn, line);
+//                 goto tryAgain2;
+//             }
+//             else
+//             {
+//                 TryExecuteManagePropertyCommand(player, line);
+//                 goto tryAgain2;
+//             }
+//         }
+//     }
+//     void AskPlayerToAcceptOrDeclineOffer(Player offeror, Player offeree, Player.SetOffer.Offer offer)
+//     {
+//         string line;
+//         Log(offeror.GetName() + "offers you:");
+//         Log(offer.offerInfo());
+//         Log("you should either 'accept' or 'decline' this deal");
+//         tryAgain:
+//         
+//         line = !offeree.IsBot ? ReadLine() : offeree.GetInput().AcceptOrRefuseOffer(offeror, offeree, offer);
+//
+//         if(line.Contains("accept")) new Player.AcceptOffer(offeree, offeror, offer).Execute();
+//         else if(line.Contains("decline"))new Player.DeclineOffer(offeree, offeror).Execute();
+//         else goto tryAgain;
+//     }
+// }
+//
+// bool TryExecuteSetOfferCommand(Player player, string line)//offer 12 and 39 and $90 for 5 and 25 and 19 
+// {
+//     var isLegalCommand = TryGetSetOfferCommand(player, line, out var command);
+//     if (isLegalCommand) command.Execute();
+//
+//     WriteLine("legal? " + isLegalCommand);
+//     return isLegalCommand;
+//
+//     bool TryGetSetOfferCommand(Player whoseTurn, string line, out Command command)
+//     {
+//         command = null;
+//         
+//         
+//         if(!line.Contains("for")) {WriteLine("you must include 'for' to differentiate between deal sides"); return false;}
+//
+//         var commandParts = line.Split(new string[] {"for"}, 2, StringSplitOptions.None);
+//
+//         var isTHereOfferedMoney = TryExtractMoneyDigits(commandParts[0], out var offeredMoney);
+//         var isThereRequestedMoney = TryExtractMoneyDigits(commandParts[1], out var requestedMoney);
+//         var isThereOfferedProperties = TryExtractProperties(commandParts[0], out var offeredProperties);
+//         var isThereRequestedProperties = TryExtractProperties(commandParts[1], out var requestedProperties);
+//         var isThereOpponentName = TryExtractOpponentName(line, out var player);
+//
+//         WriteLine("offeree: "+isThereOpponentName+" " +(player !=null? player.GetName():""));
+//         WriteLine("money offered: " + isTHereOfferedMoney + " " + offeredMoney);
+//         WriteLine("money requested: " +isThereRequestedMoney+" " + requestedMoney);
+//         Write("properties offered: " +isThereOfferedProperties + " ");
+//
+//         foreach (var p in offeredProperties)
+//             Write(p.GetName() + " ");
+//         WriteLine();
+//         
+//         Write("properties requested: " +isThereRequestedProperties+ " ");
+//         foreach (var p in requestedProperties)
+//             Write(p.GetName() + " ");
+//         WriteLine();
+//         
+//         
+//         command = new Player.SetOffer(player, new SetOffer.Offer(offeredProperties, requestedProperties, offeredMoney, requestedMoney));
+//
+//         return command.IsLegal();
+//         
+//
+//         bool TryExtractMoneyDigits(string line, out int money)
+//         {
+//             money = 0;  if (!line.Contains('$')) return false;
+//
+//             var dollarIndex = line.IndexOf('$');
+//
+//             var amount = "";
+//             while (true)
+//             {
+//                 if (++dollarIndex > line.Length-1 || !char.IsDigit(line[dollarIndex])) break;
+//                 amount += line[dollarIndex];
+//             }
+//
+//             money = int.Parse(amount != ""? amount:"0");
+//             
+//             return money > 0;
+//         }
+//
+//         bool TryExtractProperties(string line, out Property[] properties)
+//         {
+//             var propertiesIndexes = line.Split(' ').ToList();
+//
+//             propertiesIndexes.RemoveAll(s => s.Any(c => !char.IsDigit(c)));
+//             propertiesIndexes = propertiesIndexes.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+//
+//             List<Property> propertyList = new List<Property>();
+//             
+//             foreach (var index in propertiesIndexes)
+//                 if(TryToGetProperty(int.Parse(index), out Property p)) propertyList.Add(p);
+//
+//
+//                 properties = propertyList.ToArray();
+//                 
+//                 return !(properties == null ||properties.Length ==0);
+//         }
+//
+//         bool TryExtractOpponentName(string line, out Player player)
+//         {
+//             player = null;
+//             var regex = new Regex(" ([A-Za-z]) ");//" D " 
+//
+//             var match = regex.Match(line);
+//             if (match.Success) player = GetPlayer(match.Value[1]);
+//             
+//             WriteLine(match.Value);
+//             
+//                 return player != null;
+//                 
+//                 Player GetPlayer(char letter) =>
+//                 ActivePlayers.FirstOrDefault(p => p.GetName()[0] == letter && p != whoseTurn);
+//         }
+//     }
+// }
+// bool TryExecuteBidCommand(Player player, string line)
+// {
+//     var isLegalCommand = TryGetBidCommand(player, line, out var command);
+//     if (isLegalCommand) command.Execute();
+//
+//     return isLegalCommand;
+//
+//     bool TryGetBidCommand(Player bidder, string line, out Command command)
+//     {
+//         command = null;
+//         
+//         if (!TryToGetDigits(line, out var bid)) return false;
+//
+//         command = new Bid(bidder, bid);
+//
+//         return command != null ? command.IsLegal() : false;
+//     }
+// }
+
+    #endregion
+
+    #region Lovely checkers //don't touch these warriors
+
+    bool TryExecuteDivestPropertyCommand(Player player, string line)
     {
-        Log("you are in jail, would you like to get 'out' for $50, or 'stay' this time?");
+        var isLegalCommand = TryGetDivestPropertyCommand(player, line, out var command);
+        if (isLegalCommand) command.Execute();
 
-        string line;
+        return isLegalCommand;
 
-        tryAgain:
-        
-        line = !prisoner.IsBot ? ReadLine() : BotRead();
-
-        if (line.Contains("out"))
+        bool TryGetDivestPropertyCommand(Player player, string line, out Command command)
         {
-            var getOut = new Player.GetOutOfJail(prisoner);
-            if(getOut.IsLegal()) getOut.Execute(); 
-            else goto tryAgain;
-        }
-        else if (line.Contains("stay"))
-        {
-            var getOut = new Player.StayInJail(prisoner);
-            if(getOut.IsLegal()) getOut.Execute(); 
-            else goto tryAgain;
-        } else goto tryAgain;
-        
-        string BotRead()
-        {
-            Random random = new Random();
-            bool randomBool = random.Next(2) == 1;
-            var command = "stay";
+            command = null;
 
-            if (prisoner.HasEnoughMoney(50) || Jail.GetPrisoner(prisoner).ExceededJailPeriod()) command = "out";
+            string[] commands = { "sell house", "mort" }; //followed by digits
 
-            return TypeOutText(command);
+            if (!TryToGetDigits(line, out var i) || !InBounds(i)) return false;
+
+            if (line.Contains(commands[0]) && TryToGetStreet(i, out var street))
+                command = new SellHouse(player, street);
+            else if (line.Contains(commands[1]) && TryToGetProperty(i, out var property))
+                command = new MortgageProperty(player, property);
+
+            return command != null ? command.IsLegal() : false;
+
         }
     }
-    void AskPlayerToRoll(int times, Player whoseTurn)
+
+    bool TryExecuteManagePropertyCommand(Player player, string line)
     {
-        Log("'roll' the dice");
+        var isLegalCommand = TryGetPropertyManagementCommand(player, line, out var command);
+        if (isLegalCommand) command.Execute();
 
-        string line;
-        do
-            line = !whoseTurn.IsBot ? ReadLine() : BotRead("roll");
-        while (line != "roll");
+        return isLegalCommand;
 
-        new Player.RollDice(whoseTurn).Execute();
-
-        string BotRead(string command)
+        bool TryGetPropertyManagementCommand(Player player, string line, out Command command)
         {
-            //do some typing here
-            
-            return TypeOutText(command);
-        }
-        
-    }
-    void AskPlayerToPayRentOrDivest(Property property, Player victim, int amount)
-    {
-        if (victim.HasEnoughMoney(amount))
-            AskPlayerToPayRent(property, victim, amount);
-        else AskPlayerToDivestBecauseHeDoesNotHaveEnoughMoney(property, victim, amount);
-    }
-    void AskPlayerToPayRent(Property property, Player victim, int amount)
-    {
-        var declareBankruptcyLog = amount >= 900 ? ", you can 'declare bankruptcy' though :)" : "";
-        Log($"you have to 'pay' {property.GetOwner().GetName()} ${amount}" + declareBankruptcyLog);
+            command = null;
 
-        string line;
-        do
-        {
-            line = !victim.IsBot ? ReadLine() : BotRead("pay");
-        }
-        while (!line.Contains("pay"));//todo divestment stuff
+            string[] commands = { "buy house", "sell house", "unmort", "mort" }; //followed by digits
 
-        new Player.PayRent(victim, property).Execute();
+            if (!TryToGetDigits(line, out var i) || !InBounds(i)) return false;
 
-        string BotRead(string command)
-        {
-            return TypeOutText(command);
+            var isStreet = TryToGetStreet(i, out var street);
+
+            if (line.Contains(commands[0]) && isStreet) command = new BuildHouse(player, street);
+            else if (line.Contains(commands[1]) && isStreet) command = new SellHouse(player, street);
+
+            var isProperty = TryToGetProperty(i, out var property);
+
+            if (line.Contains(commands[2]) && isProperty) command = new UnmortgageProperty(player, property);
+            else if (line.Contains(commands[3]) && isProperty) command = new MortgageProperty(player, property);
+
+
+            return command != null ? command.IsLegal() : false;
         }
     }
-    void AskPlayerToDivestBecauseHeDoesNotHaveEnoughMoney(Property property, Player victim, int amount)
+
+    bool TryToGetProperty(int i, out Property property)
     {
-        Log($"you owe {property.GetOwner().GetName()} ${amount} while you only have ${victim.GetMoney()}");
-        Log("'mortgage ##' or 'sell ##' To proceed, or you can simply 'declare bankruptcy' :)");
+        property = InBounds(i) && GetPlace(i) is Property ? GetPlace(i) as Property : null;
 
-        Read("divest");
+        if (property == null) WriteLine(GetPlace(i).GetName() + " is not a property");
 
-        void Read(string command)
-        {
-            string line;
-            do
-            {
-                tryAgain:
-                line = !victim.IsBot ? ReadLine() : BotRead("divest");
-                var newLine = line.Split(' ');
-
-                switch (newLine[0])//todo refactor this
-                {
-                    case "mortgage":
-                        var p = TryToGetProperty(newLine[1]);
-                        if (p is null) goto tryAgain;
-                        
-                        var mortgage = new Player.MortgageProperty(victim, p);
-                        if (mortgage.IsLegal()) mortgage.Execute();
-                        break;
-                    
-                    case "sell":
-                        var s = TryToGetStreet(newLine[1]);
-                        if (s is null) goto tryAgain;
-                        
-                        var sellHouse = new Player.SellHouse(victim, s);
-                        if (sellHouse.IsLegal()) sellHouse.Execute();
-                        break;
-
-                        default:
-                            goto tryAgain;
-                }
-            }
-            while (!victim.HasEnoughMoney(amount));
-
-            new Player.PayRent(victim, property).Execute();
-
-            Property TryToGetProperty(string line)
-            {
-                if (int.TryParse(line, out var index))
-                {
-                    if (GetPlace(index) is Property p)
-                    {
-                        return p;
-                    }
-                    else return null;
-                }
-                else return null;
-            }
-            Street TryToGetStreet(string line)
-            {
-                if (int.TryParse(line, out var index))
-                {
-                    if (GetPlace(index) is Street s)
-                    {
-                        return s;
-                    }
-                    else return null;
-                }
-                else return null;
-            }
-        }
-
-        string BotRead(string command)
-        {
-            //do some typing here
-            return command;
-        }
+        return property != null;
     }
-    void AskPlayerToBuyPropertyOrPutItOnAuction(Player player, Property property)
+
+    bool TryToGetStreet(int i, out Street street)
     {
-        Log($"you landed on unowned property. you have to either 'buy' {property.GetName()} for {property.GetPrice()} or 'bid' for auction");
-        
-        string line;
+        street = InBounds(i) && GetPlace(i) is Street ? GetPlace(i) as Street : null;
 
-        tryAgain:
-        line = !player.IsBot ? ReadLine() : BotRead("buy");//todo buy or bid
-
-        if (line.Contains("buy"))
-        {
-            var buyProperty = new Player.BuyProperty(player, property);
-            if (!buyProperty.IsLegal()) goto tryAgain;
-            buyProperty.Execute();
-        } 
-        else if (line.Contains("bid"))
-        {
-            new Player.OpenAuction(property).Execute();
-        } 
-        else goto tryAgain;
-
-        string BotRead(string command)
-        {
-            //do some typing here
-            //TypeOutText(command);
-            return TypeOutText(command);
-        }
+        if (street == null) WriteLine(GetPlace(i).GetName() + " is not a street you dumb");
+        return street != null;
     }
-    void AskPlayersToBid(Property property)
+
+    bool InBounds(int i) //board length
     {
-        Log($"bid '##' for {property.GetName()}, or 'fold'");
+        if (i >= 0 && i < 40) return true;
 
-        List<Player> bidders  = new List<Player>(ActivePlayers);
-
-        bidders.Reverse();
-        
-        string line;
-        while(true)
-        {
-            if (bidders.Count == 1) break;//bad code, but works
-            
-            for (int i = bidders.Count - 1; i >= 0; i--)
-            {
-                if (bidders.Count == 1 && MostBidder != null) break;
-                tryAgain:
-                
-                Write($"{bidders[i].GetName()}: ");
-                line = !bidders[i].IsBot ? ReadLine() : BotRead(bidders[i]);
-
-                if (line.Contains("fold"))
-                    bidders.RemoveAt(i);
-                else if (!TryExecuteBidCommand(bidders[i], line)) goto tryAgain;
-            }
-        }
-
-        bidders.First().CloseAuction(property); 
-        
-        string BotRead(Player bot)
-        {
-            var newBid = MostBid + new Random().Next(5, 75);
-            //do some typing here
-            if (MostBid > property.GetPrice() || !bot.HasEnoughMoney(newBid))
-            {
-                return TypeOutText("fold");
-            }
-            return TypeOutText(newBid.ToString());
-        }
-        void Test()
-        {
-            const int stdInputHandle = -10;
-
-            [DllImport("kernel32.dll", SetLastError = true)]
-            static extern IntPtr GetStdHandle(int nStdHandle);
-
-            [DllImport("kernel32.dll", SetLastError = true)]
-            static extern bool CancelIoEx(IntPtr handle, IntPtr lpOverlapped);
-            
-            // Start the timeout
-            var read = false;
-            Task.Delay(15000).ContinueWith(_ =>
-            {
-                if (!read)
-                {
-                    // Timeout => cancel the console read
-                    var handle = GetStdHandle(stdInputHandle);
-                    CancelIoEx(handle, IntPtr.Zero);
-                }
-            });
-
-            try
-            {
-                // Start reading from the console
-                WriteLine("Do you want to continue [Y/n] (10 seconds remaining):");
-                var key = ReadKey();
-                read = true;
-                WriteLine("Key read");
-            }
-            // Handle the exception when the operation is canceled
-            catch (InvalidOperationException)
-            {
-                WriteLine("Operation canceled");
-            }
-            catch (OperationCanceledException)
-            {
-                WriteLine("Operation canceled");
-            }
-        }
-        
+        WriteLine("wrong index");
+        return false;
     }
-    void AskPlayerToProceedPlaying()//todo refactor this shit
+
+    bool TryToGetDigits(string line, out int value)
     {
-        var player = WhoseTurn;
-        
-        //roll again or end turn, you can also manage your properties
-        if (!player.InJail && Dice.PlayerCanRollAgain())//bad logic but seems to work for now
-        {
-            string line;
-            Log("you got double, 'roll' again");
-            tryAgain1:
-            line = !player.IsBot ? ReadLine() : BotRead("roll");
+        var areDigits = int.TryParse(new String(line.Where(char.IsDigit).ToArray()), out var digits);
 
-            if (line.Contains("roll"))
-                new Player.RollDice(player).Execute();
-            else goto tryAgain1;
-        }
-        else
-        {
-            string line;
-            Log("You may manage your properties, set a deal, or 'end' turn");
-            tryAgain2:
-            line = !player.IsBot ? ReadLine() : BotRead("end");
+        //if(!areDigits) 
+        value = digits;
 
-            if (line.Contains("end"))
-                new Player.EndTurn(player).Execute();
-            else
-            {
-                TryExecuteManagePropertyCommand(player, line);
-                goto tryAgain2;
-            }
-        }
-        
-        string BotRead(string command)
-        {
-            return TypeOutText(command);
-        }
+        return areDigits;
     }
 }
-bool TryExecuteBidCommand(Player player, string line)
-{
-    var isLegalCommand = TryGetBidCommand(player, line, out var command);
-    if (isLegalCommand) command.Execute();
 
-    return isLegalCommand;
-
-    bool TryGetBidCommand(Player bidder, string line, out Command command)
-    {
-        command = null;
-        
-        if (!TryToGetDigits(line, out var bid)) return false;
-
-        command = new Bid(bidder, bid);
-
-        return command != null ? command.IsLegal() : false;
-    }
-}
-bool TryExecuteManagePropertyCommand(Player player, string line)
-{
-    var isLegalCommand = TryGetPropertyManagementCommand(player, line, out var command);
-    if(isLegalCommand) command.Execute();
-    
-    return isLegalCommand;
-    
-    bool TryGetPropertyManagementCommand(Player player, string line, out Command command)
-    {
-        command = null;
-
-        string[] commands = {"buy house", "sell house", "unmort", "mort"};//followed by digits
-
-        if (!TryToGetDigits(line, out var i) || !InBounds(i)) return false;
-
-        var isStreet = TryToGetStreet(i, out var street);
-
-        if (line.Contains(commands[0]) && isStreet) command = new BuildHouse(player, street);
-        else if (line.Contains(commands[1]) && isStreet) command = new SellHouse(player, street);
-        
-        var isProperty = TryToGetProperty(i, out var property);
-        
-        if (line.Contains(commands[2]) && isProperty) command = new UnmortgageProperty(player, property);
-        else if (line.Contains(commands[3]) && isProperty) command = new MortgageProperty(player, property);
-            
-        
-        return command != null ? command.IsLegal() : false;
-        
-        //lovely checkers
-        bool TryToGetProperty(int i, out Property property)
-        { 
-            property = InBounds(i) && GetPlace(i) is Property? GetPlace(i) as Property : null;
-
-            if(property == null) WriteLine(GetPlace(i).GetName() + " is not a property");
-
-            return property != null;
-        }
-        bool TryToGetStreet(int i, out Street street)
-        {
-            street = InBounds(i) && GetPlace(i) is Street? GetPlace(i) as Street : null;
-
-            if(street == null) WriteLine(GetPlace(i).GetName() + " is not a street you dumb");
-            return street != null;
-        }
-        bool InBounds(int i)//board length
-        {
-            if (i >= 0 && i < 40) return true;
-            
-            WriteLine("wrong index");
-            return false;
-        }
-    }
-}
-static bool TryToGetDigits(string line, out int value)
-{
-    var areDigits = int.TryParse(new String(line.Where(char.IsDigit).ToArray()), out var digits);
-
-    //if(!areDigits) 
-    value = digits;
-
-    return areDigits;
-}
+#endregion

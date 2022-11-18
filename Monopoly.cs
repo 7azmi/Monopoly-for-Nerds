@@ -1,16 +1,19 @@
-﻿using System.Drawing;
+﻿
+
 //using System.Runtime.CompilerServices;
 
-namespace Monopoly_for_Nerds;
 
-using static Monopoly.Board;
-using static Monopoly.Engine;
+using static MonopolyTerminal.Monopoly.Board;
+using static MonopolyTerminal.Monopoly.Engine;
 
+namespace MonopolyTerminal;
 public partial class Monopoly
 {
-    public Monopoly(Player[] players)
+    public Monopoly(GameSettings gameSettings)
     {
-        _allPlayers = players;
+        GameSettings = gameSettings;
+        
+        _allPlayers = gameSettings.Players;
 
         ActivePlayers = new List<Player>(_allPlayers);
 
@@ -23,7 +26,8 @@ public partial class Monopoly
         Start();
     }
 
-
+    public static GameSettings GameSettings;
+    
     private readonly Player[] _allPlayers;
     public static List<Player> ActivePlayers;
     public static Player WhoseTurn { get; set; }
