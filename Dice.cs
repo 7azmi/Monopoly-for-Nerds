@@ -7,25 +7,29 @@ public partial class Monopoly
 {
     public static class Dice
     {
+        
+        /*
         static Dice()
         {
-            OnRentalPaid += (property, player, rentalValue) =>
+            OnRentalPaid += (property, player, rentalValue) => 
             {
-                if (PlayerCanRollAgain())
+                if (PlayerCanRollAgain() && ActivePlayers.Count < 1)//if you remove the second condition, the winner will keep playing if it was double
                 {
                     SetDiceState(DiceState.ReadyForRolling);
                 }
             };
         }
+        */
+        
         private static int _dice1;
         private static int _dice2;
         private static int _doubles = 0;
 
         private static DiceState _state;
         
-        static Random rand = new Random();
-        private static Vector2 shuffleRange = new Vector2(10, 20);
-        private static float shuffleSpeed = 500f;//best value :)
+        static Random rand = new ();
+        private static Vector2 _shuffleRange = new (2, 5);
+        private static float _shuffleSpeed = 1000f;//500f;//best value :)
         
         public static int SumDice() => _dice1 + _dice2;
 
@@ -57,8 +61,8 @@ public partial class Monopoly
         {
             SetDiceState(DiceState.Rolling);
             
-            var rollings = rand.Next((int)shuffleRange.X, (int)shuffleRange.Y);
-            var delay = rollings / shuffleSpeed;
+            var rollings = rand.Next((int)_shuffleRange.X, (int)_shuffleRange.Y);
+            var delay = rollings / _shuffleSpeed;
             
             for (int i = 0; i < rollings; i++)
             {
@@ -75,7 +79,7 @@ public partial class Monopoly
             
             if(IsDouble()) IncreaseDoubleCounter();
             
-            Console.WriteLine("rolled " + SumDice());//could be temp
+            Human.Terminal.Log("rolled " + SumDice());//could be temp
             
             SetDiceState(DiceState.Rolled);
 

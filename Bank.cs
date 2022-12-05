@@ -1,11 +1,13 @@
-﻿using MonopolyTerminal.Enums;
+﻿using System.Diagnostics;
+using MonopolyTerminal.Enums;
 using MonopolyTerminal.Helpers;
+using MonopolyTerminal.Interfaces;
 using static MonopolyTerminal.Monopoly;
 using static MonopolyTerminal.Monopoly.Board;
 using static MonopolyTerminal.Monopoly.Engine;
 using static MonopolyTerminal.Monopoly.Dice;
 using static MonopolyTerminal.Monopoly.Auction;
-using static System.Console;
+//using static System.Console;
 
 namespace MonopolyTerminal;
 
@@ -13,9 +15,10 @@ public static class Bank//to be modified
 {
     public static void GetSalary(this Player p, int salary)
     {
+        Log($"{p.GetName()} receives $200 salary");
+        
         p.AddMoney(salary);
         
-        WriteLine($"{p.GetName()} receives $200 salary");
     }
 
     public static void GoJail(this Player player)
@@ -25,18 +28,13 @@ public static class Bank//to be modified
         jail.GetemIn(player);
         player.SetCurrentOccupation(jail);
         
-        WriteLine($"{player.GetName()} went to jail");
+        Log($"{player.GetName()} went to jail");
         
         OnPlayerGetsToJail?.Invoke(player);//don't ask me why 2
 
         SwitchNextPlayerTurn();
     }
 
-    public static void Pay(Player victim, PaymentReason reason, int value, Player collector)
-    {
-        
-    }
-    
     public static void GetOutOfJail(this Player player, int fine)
     {
         var jail = GetPlace(10) as Jail;
@@ -44,11 +42,11 @@ public static class Bank//to be modified
         player.SpendMoney(fine);
         jail.GetemOut(player);
 
-        WriteLine($"{player.GetName()} went out of jail");
+        Log($"{player.GetName()} went out of jail");
 
         OnPlayerGetsOutOfJail?.Invoke(player);
         
-        SetDiceState(DiceState.ReadyForRolling);
+        OnDiceReadyForRolling?.Invoke(GetDoubles());//SetDiceState(DiceState.ReadyForRolling);
     }
 
     public static void StayInJail(this Player player)
@@ -58,7 +56,7 @@ public static class Bank//to be modified
         var times = Jail.GetPrisoner(player).GetHowManyRoundsPlayerIsInJail();
         var additionalInfo = times > 1 ? $" for {times} times" : "";
         
-        WriteLine($"you decided to stay in jail{additionalInfo}, you can manage your properties though.");
+        Log($"you decided to stay in jail{additionalInfo}, you can manage your properties though.");
         
         OnPlayerDecidesToStayInJail?.Invoke(player);
     }
@@ -69,7 +67,7 @@ public static class Bank//to be modified
         property.SetOwner(player);
         player.AddProperty(property);
         
-        WriteLine($"{player.GetName()} bought {property.GetName()} for ${property.GetPrice()}.");
+        Log($"{player.GetName()} bought {property.GetName()} for ${property.GetPrice()}.");
         
         OnBuyProperty?.Invoke(property);
     }
@@ -79,7 +77,7 @@ public static class Bank//to be modified
         street.AddHouse();
         player.SpendMoney(street.GetHousePrice());
         
-        WriteLine($"you bought a house on {street.GetName()} for ${street.GetHousePrice()}");
+        Log($"you bought a house on {street.GetName()} for ${street.GetHousePrice()}");
         
         OnPlayerBuyHouse?.Invoke(player, street);
     }
@@ -89,7 +87,7 @@ public static class Bank//to be modified
         street.RemoveHouse();
         player.AddMoney(street.GetHousePrice() /2);//half price
         
-        WriteLine($"you sold a house from {street.GetName()} for ${street.GetHousePrice()/2}");
+        Log($"you sold a house from {street.GetName()} for ${street.GetHousePrice()/2}");
         
         OnPlayerSellHouse?.Invoke(player, street);
     }
@@ -99,7 +97,7 @@ public static class Bank//to be modified
         property.Mortgage();
         player.AddMoney(property.MortgageValue);
         
-        WriteLine($"you mortgaged {property.GetName()} for ${property.MortgageValue}");
+        Log($"{player.GetName()} mortgaged {property.GetName()} for ${property.MortgageValue}");
         
         OnPlayerMortgage?.Invoke(player, property);
     }
@@ -108,7 +106,7 @@ public static class Bank//to be modified
         property.Unmortgage();
         player.SpendMoney(property.UnmortgageValue);
         
-        WriteLine($"you unmortgaged {property.GetName()} for ${property.UnmortgageValue}");
+        Log($"you unmortgaged {property.GetName()} for ${property.UnmortgageValue}");
         
         OnPlayerUnmortgage?.Invoke(player, property);
     }
@@ -121,24 +119,26 @@ public static class Bank//to be modified
         victim.SpendMoney(rental);
         owner.AddMoney(rental);
         
-        WriteLine($"{victim.GetName()} paid {owner.GetName()} ${rental}");
+        Log($"{victim.GetName()} paid {owner.GetName()} ${rental}");
 
         OnRentalPaid?.Invoke(property, victim, rental);
     }
 
     public static void OpenAuction(this Property onSale)
     {
-        Auction.OpenAuction(onSale);
+        Log($"{onSale.GetName()} is on sale. Let's see who bids most!");
         
-        WriteLine($"{onSale.GetName()} is on sale. Let's see who bids most!");
+        Auction.OpenAuction(onSale);
 
-        OnAuction?.Invoke(OnSale);
+        OnStartAuction?.Invoke(OnSale);
     }
     
     public static void Bid(this Player bidder, Property onSale, int newBid)
     {
         MostBidder = bidder;
         MostBid = newBid;
+        
+        Log($"{bidder.GetName()} bids {newBid}");
 
         OnBid?.Invoke(bidder, onSale, newBid);
     }
@@ -148,18 +148,18 @@ public static class Bank//to be modified
         if (winner != null)
         {
             winner.SpendMoney(MostBid);
-            winner.AddProperty(property);
             property.SetOwner(winner);
-        
-            WriteLine($"{MostBidder.GetName()} wins {property.GetName()} for ${MostBid}");
+            winner.AddProperty(property);
+
+            Log($"{MostBidder.GetName()} wins {property.GetName()} for ${MostBid}");
         } 
         else CancelAuction();
 
-        OnCloseAuction?.Invoke(winner, property);
+        OnCloseAuction.Invoke(winner, property);
 
         void CancelAuction()
         {
-            WriteLine("No one bids! strange.");
+            Log("No one bids! strange.");
         }
     }
     
@@ -171,12 +171,12 @@ public static class Bank//to be modified
 
             OnMovingOnPlace?.Invoke(step, WhoseTurn);
             
-            Thread.Sleep(150);
+            Thread.Sleep(100);
         }
 
         if (steps.IsNullOrEmpty())
         {
-            Console.WriteLine("Step path is null or empty! Reload the program.");
+            Log("Step path is null or empty! Reload the program.");
             return;
         }
         steps.Last().Land();
@@ -185,6 +185,50 @@ public static class Bank//to be modified
     public static void DeclareBankruptcy(this Player player)
     {
         //todo later
+        player.UnownAllProperties();
+
+        var c = ActivePlayers.Count;
+        if (c == 2) 
+        {
+            ActivePlayers.Remove(player);
+            OnDeclareBankruptcy.Invoke(player);
+            OnDeclareWinner.Invoke(ActivePlayers.First());//the boss
+            
+        } else SwitchNextPlayerTurn();//bye
+
+        void SwitchNextPlayerTurn() //refactor later
+        {
+            ResetDoubleCounter();
+
+            NextPlayer();
+
+            ActivePlayers.Remove(player);
+
+            OnDeclareBankruptcy.Invoke(player);
+
+            OnPlayerTurn?.Invoke(WhoseTurn);
+            if (WhoseTurn.InJail) OnPlayerTurnWhileInJail?.Invoke(WhoseTurn); //window Jail.AskPlayerToGetOutOrStayInJail(); //window
+            else OnDiceReadyForRolling.Invoke(GetDoubles()); //SetDiceState(DiceState.ReadyForRolling);    
+            
+            void NextPlayer()
+            {
+                if (WhoseTurn == ActivePlayers.Last())
+                    WhoseTurn = ActivePlayers.First();
+                else
+                {
+                    for (var i = 0; i < ActivePlayers.Count - 1; i++)
+                    {
+                        if (WhoseTurn == ActivePlayers[i])
+                        {
+                            WhoseTurn.PlayerState &= ~PlayerState.MyTurn;
+                            WhoseTurn = ActivePlayers[i + 1];
+                            WhoseTurn.PlayerState |= PlayerState.MyTurn;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public static void SetOffer(this Player offeror, Player offeree, Player.SetOffer.Offer offer)
@@ -233,5 +277,21 @@ public static class Bank//to be modified
     }
     public static int TotalNetWorth(Player player) => 
         TotalNetWorth(player.Properties.ToArray(), player.GetMoney(), player.HasJailFreeCard);
-    
+
+    public static void UnownAllProperties(this Player player)
+    {
+        foreach (var property in player.Properties)
+        {
+            property.Unmortgage();
+            property.SetOwner(null);
+            
+            if(property is Street s) 
+                while(s.HasHouses) s.RemoveHouse();
+        }
+    }
+
+    static void Log(string line)
+    {
+        Human.Terminal.Log(line);
+    }
 }

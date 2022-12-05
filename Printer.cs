@@ -3,6 +3,7 @@ using static Monopoly.Engine;
 using static Monopoly.Board;
 using static Monopoly;
 using static Console;
+using static Human.Terminal;
 
 public static class Printer
 {
@@ -84,28 +85,33 @@ public static class Printer
     OnPlayerBuyHouse += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
     OnPlayerSellHouse += (player, property) => PrintPlayersPanel(currentLeft, currentTop);
     OnAcceptOffer += (_, _, _) => PrintPlayersPanel(currentLeft, currentTop);
+    OnDeclareBankruptcy += _ => PrintPlayersPanel(currentLeft, currentTop);
     //todo still have work to do here
     
     static void PrintPlayersPanel(int cursorLeft, int cursorTop)
     {
+        //Console.BackgroundColor = ConsoleColor.Black;
         var currentLeft = CursorLeft;
         var currentTop = CursorTop;
-        
-        
-        for (int i = 0; i < ActivePlayers.Count; i++)
+        var playersLength = Monopoly.GameSettings.Players.Length;
+
+        for (var i = 0; i < AllPlayers.Length; i++)
         {
             CursorLeft = cursorLeft + 1;
             CursorTop = cursorTop + i;
-            
-            var name = ActivePlayers[i].GetName();
-            var money = ActivePlayers[i].GetMoney().ToString();
-            var jailState = ActivePlayers[i].InJail ? "(In jail)" : "         ";
-            var turnState = ActivePlayers[i].MyTurn ? "(His Turn)" : "          ";
-            var playerLine = $"{name} '{name[0]}' ${money.PadRight(8)} {turnState} {jailState}";
+            var name = AllPlayers[i].GetName();
+            var money = AllPlayers[i].GetMoney().ToString();
+            var jailState = AllPlayers[i].InJail ? "(In jail)" : "         ";
+            var turnState = AllPlayers[i].MyTurn ? "(His Turn)" : "          ";
+            var state = AllPlayers[i].IsBroke ? "*Broke*    " : turnState;
+            var playerLine = $"{name} '{name[0]}' ${money.PadRight(8)} {state} {jailState}";
 
-            WriteLine(playerLine);
-            WriteLine();
+            PrintLine(playerLine);
+            PrintLine("");
+            
         }
+        
+        
         CursorLeft = currentLeft;
         CursorTop = currentTop;
     }
@@ -317,7 +323,7 @@ public static class Printer
     Border(); Cell(39); Border();
     Console.WriteLine();
 
-    //Console.WriteLine("|11-----|                                                                       |39-----|");
+    //Human.Terminal.Log("|11-----|                                                                       |39-----|");
     Border(); PropertyInfo(11); Border();
     Console.Write("                                                                       ");
     Border(); PropertyInfo(39); Border();
@@ -351,32 +357,43 @@ public static class Printer
     } 
     Border();
     WriteLine();
-    
-    //var currentLeft = Console.CursorLeft; //0
-    var currentTop2 = CursorTop;
 
-    OnPlayerTurn += player => Clear(currentTop2);
+    /*
+    CommandBarPosition = (ttt.Item1, ttt.Item2);
+    CreateCommandBar();
+    
+    void CreateCommandBar()
+    {
+        CommandBarLogger();
+    }*/
+    
+    StreamLinePosition = (CursorLeft, CursorTop);
+    (int, int) tempLine = StreamLinePosition;
+
+    //var topG = CursorTop;
+    OnPlayerTurn += player => Clear(tempLine.Item2);
 
     Terminal.ConsoleRenderer.RenderDoge();
     
     void Clear(int cursorTop)
     {
         //var currentLeft = Console.CursorLeft;
-        var currentTop = CursorTop;
+        var currentTop = StreamLinePosition.Item2;
 
         for (var i = cursorTop; i <= currentTop; i++)
         {
             SetCursorPosition(0, i);
             ClearCurrentConsoleLine();
-        } 
-        
-        SetCursorPosition(0, cursorTop);
+        }
+
+        StreamLinePosition = (0, cursorTop);
+        SetCursorPosition(CommandBarPosition.Item1, CommandBarPosition.Item2);
 
         void ClearCurrentConsoleLine()
         {
             var currentLineCursor = CursorTop;
             SetCursorPosition(0, CursorTop);
-            Write(new string(' ', WindowWidth)); 
+            PrintLine(new string(' ', WindowWidth)); 
             SetCursorPosition(0, currentLineCursor);
         }
     }
@@ -464,6 +481,8 @@ public static class Printer
         var currentLeft = CursorLeft;
         var currentTop = CursorTop;
         
+        if (GetPlace(index) is Property) OnDeclareBankruptcy += _ => WritePropertyState(index, currentLeft, currentTop);
+        
         if (GetPlace(index) is Property) OnPlayerMortgage += (player, property) => WritePropertyState(index, currentLeft, currentTop);
         if (GetPlace(index) is Property) OnPlayerUnmortgage += (player, property) => WritePropertyState(index, currentLeft, currentTop);
         if (GetPlace(index) is Street) OnPlayerBuyHouse += (player, street) => WritePropertyState(index, currentLeft, currentTop);
@@ -511,24 +530,24 @@ public static class Printer
                 {
                     var currentColor = BackgroundColor;
                     BackgroundColor = ConsoleColor.DarkGreen;
-                    Write(street.HouseCount);
+                    Print(street.HouseCount.ToString());
                     BackgroundColor = currentColor;
                 } 
                 else if (street.IsMortgaged())
                 {
                     var currentColor = BackgroundColor;
                     BackgroundColor = ConsoleColor.DarkRed;
-                    Write("M");
+                    Print("M");
                     BackgroundColor = currentColor;
-                } else Write("-");
+                } else Print("-");
             }
             else if (property.IsMortgaged())
             {
                 var currentColor = BackgroundColor;
                 BackgroundColor = ConsoleColor.DarkRed;
-                Write("M");
+                Print("M");
                 BackgroundColor = currentColor;
-            }else Write("-");
+            }else Print("-");
             
             CursorLeft = currentLeft;
             CursorTop = currentTop;
@@ -536,14 +555,54 @@ public static class Printer
     }
 }
 
+    private static (int, int)[] _cellsPos = new (int, int)[40];
+    
+    
     private static void PrintCell(int index)
     {
+        /*
         var currentLeft = CursorLeft;
         var currentTop = CursorTop;
+        */
+        _cellsPos[index].Item1 = CursorLeft;
+        _cellsPos[index].Item2 = CursorTop;
 
-        OnStart += () => PrintCell(index, currentLeft, currentTop);
-        OnMovingOnPlace += (place, player) => PrintCell(index, currentLeft, currentTop);
+        //you maaaay refactor this
+        OnAcceptOffer += (_, _, _) => PrintCell(index, _cellsPos[index].Item1, _cellsPos[index].Item2); 
+        OnDeclareBankruptcy += _ => PrintCell(index, _cellsPos[index].Item1, _cellsPos[index].Item2);
         
+        if (index == 39)//last one
+        {
+            OnStart += () =>
+            {
+                var sp = Monopoly.GameSettings.StartingPoint;
+                PrintCell(sp, _cellsPos[sp].Item1, _cellsPos[sp].Item2);
+            };
+            
+            OnMovingOnPlace += (place, player) =>
+            {
+                var j = (place.GetIndex() + 39) % 40;
+                var i = place.GetIndex();
+                var k = (place.GetIndex() + 1) % 40;
+                PrintCell(j, _cellsPos[j].Item1, _cellsPos[j].Item2);
+                PrintCell(i, _cellsPos[i].Item1, _cellsPos[i].Item2);
+                PrintCell(k, _cellsPos[k].Item1, _cellsPos[k].Item2);
+            };
+            
+            OnPlayerGetsToJail += player => PrintCell(10, _cellsPos[10].Item1, _cellsPos[10].Item2);
+            OnPlayerGetsToJail += player => PrintCell(30, _cellsPos[30].Item1, _cellsPos[30].Item2);
+            OnPlayerGetsOutOfJail += player => PrintCell(10, _cellsPos[10].Item1, _cellsPos[10].Item2);
+
+
+            OnBuyProperty += (property) => PrintCell(property.GetIndex(), _cellsPos[property.GetIndex()].Item1,
+                _cellsPos[property.GetIndex()].Item2);
+            
+            OnCloseAuction += (player, property) => PrintCell(property.GetIndex(), _cellsPos[property.GetIndex()].Item1,
+                _cellsPos[property.GetIndex()].Item2);
+        }
+        
+        /*
+         OnMovingOnPlace += (place, player) => PrintCell(index, currentLeft, currentTop);
         if (GetPlace(index) is Jail)
             OnPlayerGetsOutOfJail += player => PrintCell(index, currentLeft, currentTop);
         
@@ -558,6 +617,8 @@ public static class Printer
 
         if (GetPlace(index) is Property){}
         OnAcceptOffer += (_, _, _) => PrintCell(index, currentLeft, currentTop); 
+        
+        OnDeclareBankruptcy += _ => PrintCell(index, currentLeft, currentTop); */
         
         Write("       ");
         
@@ -575,46 +636,53 @@ public static class Printer
         CursorLeft = cursorLeft;
         CursorTop = cursorTop;
 
-        if (GetPlace(index) is Property property)
-            if (property.HasOwner) BackgroundColor = property.GetOwner().GetLabel();
 
         PrintSettlers(GetPlace(index));
         
-        ResetColor();
+        //ResetColor();
         
         CursorLeft = currentLeft;
         CursorTop = currentTop;
         
-        CursorVisible = true;
+        //CursorVisible = true;
     }
     
     private static void PrintSettlers(Place place)
     {
         var settlers =  place.GetSettlers();
             
+
         for (var i = 0; i < CellPadding; i++)
         {
+            
             if (settlers.Length > i) PrintPlayerCharacter(settlers[i]);
-            else Write(" ");
+            else
+            {
+
+                if (place is Property property && property.HasOwner) BackgroundColor = property.GetOwner().GetLabel();
+                else BackgroundColor = ConsoleColor.Black;
+
+                Write(" ");
+                BackgroundColor = ConsoleColor.DarkGreen;
+            }
+
+            //ForegroundColor = currentForeground;
         }
-        
+
         void PrintPlayerCharacter(Player player)
         {
-            var currentForeground = ForegroundColor;//you always have to do this swap approach
-            var currentBackground = BackgroundColor;
-            
+            // var currentForeground = ForegroundColor;//you always have to do this swap approach
+            // var currentBackground = BackgroundColor;
+            var f = ForegroundColor;
             ForegroundColor = player.GetLabel();
             BackgroundColor = player.InJail ? ConsoleColor.Gray : ConsoleColor.Black;
             
-            Write(GetPlayerCharacter(player));
-            
-            ForegroundColor = currentForeground;
-            BackgroundColor = currentBackground;
-            
+            Write(GetPlayerCharacter(player).ToString());
+            ForegroundColor = f;
+            BackgroundColor = ConsoleColor.DarkGreen;
+
             char GetPlayerCharacter(Player player) => player.GetName()[0];
         }
     }
-    
-
-public static void Log(string log) => WriteLine(log);
+    //public static void PrintLine(string log) => Human.Terminal.PrintLine(log);
 }

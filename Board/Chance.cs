@@ -17,8 +17,8 @@ public partial class Monopoly
 
                 Random rand = new Random();
 
-                //AdvanceToNearestUtility(WhoseTurn);
-                GoBackThreeSpaces(WhoseTurn);
+                AdvanceToMayfair(WhoseTurn);
+                //(WhoseTurn);
                 return;
                 
                 int randomCard = rand.Next(3, 18);
@@ -47,26 +47,31 @@ public partial class Monopoly
                 
                 void AdvanceToMayfair(Player player)
                 {
-                    List<Place> path = new List<Place>();
+                    var path = new List<Place>();
 
-                    var i = WhoseTurn.GetCurrentOccupationByIndex();//mustn't and won't be 39 by any chance :)
+                    Human.Terminal.Log("advance to 39");
+                    var destination = 39;//Mayfair
+                    var i = WhoseTurn.GetCurrentOccupationByIndex();
                     
-                    var distenation = 39;//Mayfair
+                    var steps = (destination - i + 1 + 40) % 40;
 
-                    for (int j = i + 1; j != distenation + 1; j = (j + 1) % 40)
+                    for (var j = 1; j < steps; j++)
                     {
-                        path.Add(GetPlace(j));
+                        path.Add(GetPlace((i + j) % 40));
                     }
 
+
+                    var road = "";
                     foreach (var place in path)
                     {
-                        Console.Write(place.GetIndex() +" ");
+                        road += place.GetIndex() + " ";
                     }
+                    
+                    Human.Terminal.Log(road);
 
                     
                     Thread.Sleep(500);
                     
-                    Console.WriteLine("advance to 39");
                     player.Move(path.ToArray());
                 }
 
@@ -74,32 +79,34 @@ public partial class Monopoly
                 {
                     List<Place> path = new List<Place>();
 
+                    Human.Terminal.Log("advance to 15");
+                    
+                    var destination = 15;//Mayfair
                     var i = WhoseTurn.GetCurrentOccupationByIndex();
-                    
-                    var distenation = 15;// Marylebone station
+                    var steps = (destination - i + 1 + 40) % 40;
 
-                    for (int j = i + 1; j != distenation + 1; j = (j + 1) % 40)
+                    for (int j = i + 1; j < steps; j++)
                     {
-                        path.Add(GetPlace(j));
+                        path.Add(GetPlace(j % 40));
                     }
-
                     
+                    var road = "";
                     foreach (var place in path)
                     {
-                        Console.Write(place.GetIndex() +" ");
+                        road += place.GetIndex() + " ";
                     }
-
                     
+                    Human.Terminal.Log(road);
+
                     Thread.Sleep(500);
                     
-                    Console.WriteLine("advance to 15");
                     player.Move(path.ToArray());
                 }
 
                 void BuildingLoanMatures(Player player)
                 {
                     player.AddMoney(200);
-                    Console.WriteLine($"Collect $200 Building loan matures");
+                    Human.Terminal.Log($"Collect $200 Building loan matures");
                     Engine.OnLandingCompleted?.Invoke(this);
                 }
 
@@ -107,24 +114,27 @@ public partial class Monopoly
                 {
                     List<Place> path = new List<Place>();
 
-                    var i = WhoseTurn.GetCurrentOccupationByIndex();
+                    Human.Terminal.Log("advance to 24");
                     
-                    var distenation = 24;//Trafalgar
+                    var destination = 15;//Mayfair
+                    var i = WhoseTurn.GetCurrentOccupationByIndex();
+                    var steps = (destination - i + 1 + 40) % 40;
 
-                    for (int j = i + 1; j != distenation + 1; j = (j + 1) % 40)
+                    for (int j = i + 1; j < steps; j++)
                     {
-                        path.Add(GetPlace(j));
+                        path.Add(GetPlace(j % 40));
                     }
 
+                    var road = "";
                     foreach (var place in path)
                     {
-                        Console.Write(place.GetIndex() +" ");
+                        road += place.GetIndex() + " ";
                     }
-
+                    
+                    Human.Terminal.Log(road);
                     
                     Thread.Sleep(500);
                     
-                    Console.WriteLine("advance to 24");
                     player.Move(path.ToArray());
                     
                     Engine.OnLandingCompleted?.Invoke(this);
@@ -139,17 +149,20 @@ public partial class Monopoly
                     var electricity = 12;
                     var waterWorks = 28;
 
-                    for (int j = i+1; j != electricity +1 & j != waterWorks +1; j = (j+1) %40)
+                    Human.Terminal.Log("Advance to nearest utility");
+                    for (int j = i+1; j != electricity +1 & j != waterWorks +1; j++)
                     {
-                        path.Add(GetPlace(j));
+                        path.Add(GetPlace(j % 40));
                     }
                     
+                    var road = "";
                     foreach (var place in path)
                     {
-                        Console.Write(place.GetIndex() +" ");
+                        road += place.GetIndex() + " ";
                     }
                     
-                    Console.WriteLine("Advance to nearest utility");
+                    Human.Terminal.Log(road);
+                    
 
                     
                     Thread.Sleep(500);
@@ -160,33 +173,33 @@ public partial class Monopoly
                 void IncomeTaxRefund(Player player)
                 {
                     player.AddMoney(20);
-                    Console.WriteLine($"Pay $20 Tax Refund");
+                    Human.Terminal.Log($"Pay $20 Tax Refund");
                     Engine.OnLandingCompleted?.Invoke(this);
                 }
                 
                 void GotoJail(Player player)
                 {
+                    Human.Terminal.Log("Go directly to jail without collecting $200");
                     player.GoJail();
-                    Console.WriteLine("Go directly to jail without collecting $200");
                 }
 
                 void AdvanceToGo(Player player)
                 {
                     var i = WhoseTurn.GetCurrentOccupationByIndex();
 
+                    Human.Terminal.Log("advance to go");
                     List<Place> path = new List<Place>(_places).Where(place => place.GetIndex() > i).ToList();
                     path.Add(GetPlace(0));//go
                     
                     Thread.Sleep(500);
                     
-                    Console.WriteLine("advance to go");
                     player.Move(path.ToArray());
                 }
                 
                 void BankDividend(Player player)//collect
                 {
                     player.AddMoney(50);
-                    Console.WriteLine($"Bank pays you dividend of $50");
+                    Human.Terminal.Log($"Bank pays you dividend of $50");
                     Engine.OnLandingCompleted?.Invoke(this);
                 }
 
@@ -201,7 +214,7 @@ public partial class Monopoly
                 void GetOutOfJailFreeCard(Player player)
                 {
                     player.HasJailFreeCard = true;
-                    Console.WriteLine($"{player.GetName()} has got a free card");
+                    Human.Terminal.Log($"{player.GetName()} has got a free card");
                     Engine.OnLandingCompleted?.Invoke( this);
                 }
 
@@ -209,30 +222,35 @@ public partial class Monopoly
                 {
                     List<Place> path = new List<Place>();
 
+                    Human.Terminal.Log("advance to 11");
                     var i = WhoseTurn.GetCurrentOccupationByIndex();
-                    
-                    var distenation = 11;
+                    var destination = 11;
+                    var steps = (destination - i + 1 + 40) % 40;
 
-                    for (int j = i + 1; j != distenation + 1; j = (j + 1) % 40)
+                    for (int j = i + 1; j < steps; j++)
                     {
-                        path.Add(GetPlace(j));
+                        path.Add(GetPlace(j % 40));
                     }
 
+                    var road = "";
                     foreach (var place in path)
                     {
-                        Console.Write(place.GetIndex() +" ");
+                        road += place.GetIndex() + " ";
                     }
+                    
+                    Human.Terminal.Log(road);
 
                     Thread.Sleep(500);
                     
-                    Console.WriteLine("advance to 24");
                     player.Move(path.ToArray());
                 }
 
                 void ChairmanOfTheBoardPayment(Player player)
                 {
+                    Human.Terminal.Log("laaay laay laay laay");
                     //todo pay each player later...
                     //pay each player $50
+                    Engine.OnLandingCompleted?.Invoke(this);
                 }
                 
                 void GoBackThreeSpaces(Player player)//the worse
@@ -248,21 +266,24 @@ public partial class Monopoly
                         path.Add(GetPlace(j));
                     }
 
+                    var road = "";
                     foreach (var place in path)
                     {
-                        Console.Write(place.GetIndex() +" ");
+                        road += place.GetIndex() + " ";
                     }
+                    
+                    Human.Terminal.Log(road);
 
                     Thread.Sleep(500);
                     
-                    Console.WriteLine("Go back three spaces");
+                    Human.Terminal.Log("Go back three spaces");
                     player.Move(path.ToArray());
                 }
 
                 void SpeedingFine(Player player)
                 {
                     player.AddMoney(15);
-                    Console.WriteLine($"$15 speeding fine");
+                    Human.Terminal.Log($"$15 speeding fine");
                     Engine.OnLandingCompleted?.Invoke(this);
                 }
                 
@@ -279,18 +300,20 @@ public partial class Monopoly
 
                     for (int j = i+1;
                          j != station1 +1 & j != station2 +1 & j != station3 +1 & j != station4 +1;
-                         j = (j+1) %40)
+                         j++)
                     {
-                        path.Add(GetPlace(j));
+                        path.Add(GetPlace(j % 40));
                     }
-                    
+
+                    var road = "";
                     foreach (var place in path)
                     {
-                        Console.Write(place.GetIndex() + " ");
+                        road += place.GetIndex() + " ";
                     }
                     
-                    Console.WriteLine("Advance to nearest station");
-
+                    Human.Terminal.Log(road);
+                    
+                    Human.Terminal.Log("Advance to nearest station");
                     
                     Thread.Sleep(500);
                     

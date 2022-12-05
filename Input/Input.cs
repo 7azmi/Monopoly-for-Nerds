@@ -38,7 +38,7 @@ public abstract class Input
     public virtual async Task OnDiceReadyAgain(int getDoubles){}
     public virtual async Task OnInJail(){}
     public virtual async Task OnBuyOrBid(Board.Property property){}
-    public virtual async Task OnBidOrFold(Player bidder, int mostBid){}
+    public virtual async Task OnBidOrFold(Player bidder, int mostBid, CancellationToken token){}
     public virtual async Task OnReceiveDeal(Player offeror, Player offeree, Offer offer){}
     public virtual async Task OnTurnCompleted(){}
     public virtual async Task OnDoesNotHaveEnoughMoney(){}

@@ -11,9 +11,16 @@ public class Humanoid : Input
         Platform = platform;
     }
 
-    public override async Task OnDiceReady()
+    public override async Task OnTurn()
     {
         Platform.ReadInput();
-        
+    }
+
+    public override async Task OnBidOrFold(Player bidder, int mostBid, CancellationToken token)
+    {
+        var s = Console.ReadLine();
+        Human.Terminal.Log("humanoid: " +mostBid + 1);
+
+        new Bid(bidder, mostBid + 1).Execute();
     }
 }

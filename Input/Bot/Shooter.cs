@@ -6,8 +6,6 @@ using static MonopolyTerminal.Monopoly.Player;
 using static MonopolyTerminal.Monopoly.Player.SetOffer;
 using static MonopolyTerminal.TypingSimulator;
 
-
-
 namespace MonopolyTerminal;
 
 
@@ -17,8 +15,7 @@ public class Shooter : Input
     {
         Platform = platform;
     }
-
-
+    
     public override async Task OnTurn()
     {
         
@@ -31,32 +28,83 @@ public class Shooter : Input
 
     public override async Task OnBuyOrBid(Board.Property property)
     {
-        new BuyProperty(property).Execute();
+        //todo change this logic
+        if(property.GetPrice() <= WhoseTurn.GetMoney()) new BuyProperty(property).Execute();
+        else new OpenAuction(property).Execute();
     }
+    public override async Task OnBidOrFold(Player bidder, int mostBid, CancellationToken token)
+    {
+        var property = WhoseTurn.GetCurrentOccupation() as Board.Property;//must be
+        var newBid = mostBid + new Random().Next(5, 50);
 
+        await Task.Delay(new Random().Next(200, 500), token);
+        //Console.WriteLine($"{bidder.GetName()} bids {newBid}");
+        var isLastBidder = Auction.MostBidder == bidder;
+        if (!isLastBidder && newBid <= property.GetPrice() / 2 && bidder.HasEnoughMoney(newBid))
+            new Bid(bidder, newBid).Execute();
+    }
     public override async Task OnTurnCompleted()
     {
         new EndTurn(WhoseTurn).Execute();
     }
 
-    public Command ReceiveDeal(Player offeree, Player offeror, Offer offer) //obviously
+    public override async Task OnReceiveDeal(Player offeror, Player offeree, Offer offer)
     {
         var offerRate = Bank.TotalNetWorth(offer.PropertiesToOffer, offer.MoneyToOffer) /
                         Bank.TotalNetWorth(offer.PropertiesToOffer, offer.MoneyToOffer);
 
         var offerRateRange = new Random().Next(110, 130) / 100f;
-        Console.WriteLine($"offer rate rate {offerRateRange}");//debug
+        Human.Terminal.Log($"offer rate rate {offerRateRange}");//debug
 
-        if (offerRate >= offerRateRange) return new AcceptOffer(offeree, offeror, offer);
-        else return new DeclineOffer(offeree, offeror);
+        if (offerRate >= offerRateRange) new AcceptOffer(offeree, offeror, offer).Execute();
+        else new DeclineOffer(offeree, offeror).Execute();
     }
-    
-    public Command OnLandingOnUnOwnedProperty(Player whoseTurn, Board.Property property)
+
+    public override async Task OnInJail()
     {
-        if(property.GetPrice() > whoseTurn.GetMoney()) return new RollDice(WhoseTurn);
-        else return new OpenAuction(property);
+        if(WhoseTurn.HasEnoughMoney(50)) new GetOutOfJail(WhoseTurn).Execute();
+        else new StayInJail(WhoseTurn).Execute();
     }
-    
+
+    public override async Task OnDoesNotHaveEnoughMoney()
+    {
+        var commands = new List<Command>();
+        
+        while(true)
+        {
+            if (!TrySelling())
+            {
+                new DeclareBankruptcy(WhoseTurn).Execute();
+                break;
+            }
+            else if (WhoseTurn.GetMoney() >= 0)
+            {
+                Engine.OnTurnCompleted.Invoke();
+                break;
+            } 
+        }
+        
+        bool TrySelling()
+        {
+            foreach (var property in WhoseTurn.Properties)
+            {
+                if (property is Board.Street s && s.HasHouses)
+                {
+                    new SellHouse(WhoseTurn, s).Execute();
+                    return true;
+                }
+        
+                if (!property.IsMortgaged())
+                {
+                    new MortgageProperty(WhoseTurn, property).Execute();
+                    return true;
+                }
+            }
+            return false;//so sad
+        } 
+    }
+
+
     // public Command OnLandingOnOwnedProperty(Player whoseTurn, Board.Property property, int bill)
     // {
     //     if (whoseTurn.GetMoney() >= bill) return new PayRent(whoseTurn, property);

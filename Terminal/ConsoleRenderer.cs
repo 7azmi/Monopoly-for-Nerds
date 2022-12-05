@@ -41,7 +41,7 @@ public class ConsoleRenderer : IConsoleRenderer
 	private static ConsoleBlock dice1 = new ConsoleBlock(new Coord(95, 15));
 	private static ConsoleBlock dice2 = new ConsoleBlock(new Coord(104, 15));
 	
-	private static ConsoleBlock doge = new ConsoleBlock(new Coord(30, 6));
+	private static ConsoleBlock doge = new ConsoleBlock(new Coord(30, 6), new []{""}, new ConsoleTextStyle(ConsoleColor.DarkGreen, BLACK_COLOR));
 	
 
 	public ConsoleRenderer(GameSettings settings)
@@ -121,6 +121,7 @@ public class ConsoleRenderer : IConsoleRenderer
 
 	public static void RenderDoge()
 	{
+		//Console.ForegroundColor = ConsoleColor.Green;
 		doge.Update(new []{
 			new string("         ▄              ▄    "),
 		new string("        ▌▒█           ▄▀▒▌   "),
@@ -160,7 +161,10 @@ public class ConsoleRenderer : IConsoleRenderer
 		// new string("    ▀▄▒▒▒▒▒▒▒▒▒▒▄▄▄▀▒▒▒▒▄▀   "),
 		// new string("      ▀▄▄▄▄▄▄▀▀▀▒▒▒▒▒▄▄▀     "),
 		// new string("         ▀▀▀▀▀▀▀▀▀▀▀▀        "),
+		
+
 		});
+		//Console.ForegroundColor = ConsoleColor.Black;
 	}
 	
 	

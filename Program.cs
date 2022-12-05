@@ -13,6 +13,7 @@ using static MonopolyTerminal.Printer;
 using static MonopolyTerminal.Monopoly.Player;
 using static MonopolyTerminal.Monopoly.Auction;
 
+//Console.WriteLine((1 + 39) % 40);
 PrintBoard();
 
 LateInit();
@@ -23,14 +24,16 @@ var m = new Monopoly(new GameSettings(
     new []
     {
         new Player("nGAGEOnline", ConsoleColor.Red, 1500, new Shooter(new Terminal())),
-        new Player("Dumb Bot", ConsoleColor.Yellow, 1500, new Shooter(new Terminal())),
+        new Player("HuHu", ConsoleColor.Yellow, 1500, new Shooter(new Terminal())),
+        new Player("Shooter", ConsoleColor.Blue, 1500, new Shooter(new Terminal())),
         //new Player("Ahmed", ConsoleColor.Cyan, 1500, true),
         //new Monopoly.Player("Ahmed", ConsoleColor.Green, 1500, true)
-    }));
+    }, startingPoint: 15));
 
-Log("Finished");
-
-Read();
+MonopolyTerminal.Human.Terminal.Log("Finished");
+CursorVisible = true;
+ReadKey();
+ReadKey();
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -40,9 +43,12 @@ void ConnectGameLogicWithCommands()
     OnPlayerTurn += player => player.GetInput().OnTurn();
     OnDiceReadyForRolling += (_) => WhoseTurn.GetInput().OnDiceReady();
     OnPlayerTurnWhileInJail += (_) => WhoseTurn.GetInput().OnInJail();
+    //OnRentalPaid += (_, _, _) => 
     //OnPlayerDecidesToStayInJail += _ => AskPlayerToProceedPlaying();
     //OnRentalDue += (_, player, amount) => AskPlayerToPay(player, amount, PaymentReason.Rental);
-    //OnPlayerInDebt += (player, i) => AskPlayerToDivestForDuePaymentOrDeclareBankruptcy(player);
+    OnPlayerInDebt += (player) => WhoseTurn.GetInput().OnDoesNotHaveEnoughMoney();
+    
+    
     //OnBuyProperty += (_, _) => AskPlayerToProceedPlaying();
     //OnLandingOnMyProperty += (_, _) => AskPlayerToProceedPlaying(); 
     //OnRentalPaid += (_, _, _) => AskPlayerToProceedPlaying();
@@ -50,6 +56,7 @@ void ConnectGameLogicWithCommands()
     //OnLandingCompleted +=(place) => WhoseTurn.GetInput().
     OnLandingOnUnownedProperty += (property) => WhoseTurn.GetInput().OnBuyOrBid(property);
     OnTurnCompleted += () => WhoseTurn.GetInput().OnTurnCompleted();
+    
     //OnAuction += AskPlayersToBid;
     //OnOffering += AskPlayerToAcceptOrDeclineOffer;
     //OnAcceptOffer += (_, _, _) => AskPlayerToProceedPlaying();

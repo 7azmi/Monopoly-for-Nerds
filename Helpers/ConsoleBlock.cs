@@ -33,19 +33,24 @@ public class ConsoleBlock
 	{
 		var previousCoord = new Coord(Console.CursorLeft, Console.CursorTop);
 		
-		Console.ForegroundColor = TextStyle.Foreground;
-		Console.BackgroundColor = TextStyle.Background;
+		//Console.ForegroundColor = TextStyle.Foreground;
+		//Console.BackgroundColor = TextStyle.Background;
 
 		for (var i = 0; i < lines.Length; i++)
 		{
 			var line = lines[i];
 			Console.SetCursorPosition(Coord.X, Coord.Y + i);
 
+			Console.ForegroundColor = TextStyle.Foreground;
+			Console.BackgroundColor = TextStyle.Background;
+			
 			Console.Write(line);
+			Console.ResetColor();
+			Console.BackgroundColor = ConsoleColor.DarkGreen;
+
 		}
 
 		Console.SetCursorPosition(previousCoord.X, previousCoord.Y);
-		Console.ResetColor();
 	}
 
 	public void Update(string[] text)

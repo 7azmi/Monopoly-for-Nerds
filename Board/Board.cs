@@ -105,12 +105,11 @@ public partial class Monopoly
                 if (Owned)
                 {
                     if (GetOwner() != WhoseTurn)
-                        if(!IsMortgaged())
-                            RequestRental();
-                        else
-                        {
-                            OnLandingOnMyProperty?.Invoke(WhoseTurn, this);//home sweet home
-                        } 
+                    {
+                        if(!IsMortgaged()) RequestRental();
+                        else OnLandingCompleted.Invoke(this);
+                    }
+                    else OnLandingOnMyProperty?.Invoke(WhoseTurn, this);//home sweet home
                 }
                 else OnLandingOnUnownedProperty?.Invoke(this);
             }
@@ -326,7 +325,7 @@ public partial class Monopoly
 
                 Bank.GoJail(WhoseTurn);
                 
-                SwitchNextPlayerTurn();
+                //SwitchNextPlayerTurn();//duplicate
             }
         }
     }

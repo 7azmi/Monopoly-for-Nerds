@@ -5,7 +5,7 @@ using static Monopoly.Engine;
 
 public class Cards
 {
-    static ConsoleBlock cardBlock = new ConsoleBlock(new Coord(90, 23));
+    static ConsoleBlock cardBlock = new (new Coord(90, 23));
     
     public static string[] GetStreetCardInfo(Street s)
     {

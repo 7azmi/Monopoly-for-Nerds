@@ -11,19 +11,13 @@ public partial class Monopoly
     { 
         static Engine()
         {
-            //OnInitialization += Init;
-            //OnStart += Start;
-            //OnPlayerTurn += PlayerTurn;
-            OnPlayerTurnWhileInJail += PlayerTurnWhileInJail;
             OnMovingOnPlace += MovingOnPlace;
-            OnLandingOnUnownedProperty += LandingOnUnownedProperty;
             OnRentalDue += PayRental;
-            //OnDiceReadyForRolling += DiceReadyForRolling;
             OnDiceRolled += times =>
             {
                 if (times > 2)
                 {
-                    Console.WriteLine("Player rolled double thrice, go to jail you cheater!");
+                    Human.Terminal.Log("Player rolled double thrice, go to jail you cheater!");
                     WhoseTurn.GoJail();
                 }
                 else
@@ -50,9 +44,6 @@ public partial class Monopoly
                     }
                 }
             };
-            
-            //OnNextPlayerTurn += NextPlayerTurn;
-
         }
 
         //actions
@@ -85,7 +76,7 @@ public partial class Monopoly
         
         public static Action<Property, Player, int> OnRentalDue;
         public static Action<Property, Player, int> OnRentalPaid;
-        public static Action<Property>  OnAuction;
+        public static Action<Property>  OnStartAuction;
         public static Action<Player, Property> OnCloseAuction;
         public static Action<Player, Property, int> OnBid;
         
@@ -94,7 +85,7 @@ public partial class Monopoly
         public static Action<Player, Street> OnPlayerBuyHouse;
         public static Action<Player, Street> OnPlayerSellHouse;
         
-        public static Action<Player, int> OnPlayerInDebt;
+        public static Action<Player> OnPlayerInDebt;
         
         
         public static Action<Player, Player, Player.SetOffer.Offer> OnOffering;
@@ -105,9 +96,13 @@ public partial class Monopoly
         public static Action OnTurnCompleted;
         public static Action<Player> OnPlayerTurn;
 
+        public static Action<Player> OnDeclareBankruptcy;
+        public static Action<Player> OnDeclareWinner;
+
 
         public static void Init(Monopoly monopoly)
         {
+            //OnStartAuction += property => StartAuction(property);
             OnInitialization?.Invoke(monopoly);
         }
 
@@ -115,38 +110,50 @@ public partial class Monopoly
         {
             OnLandingCompleted += _ =>  RollAgainOrFinishTurn();
             OnBuyProperty += _ => RollAgainOrFinishTurn();
+            OnRentalPaid += (_, _, _) =>  RollAgainOrFinishTurn();
+            OnLandingOnMyProperty += (_, _) => RollAgainOrFinishTurn();
+            OnPlayerDecidesToStayInJail += _ => RollAgainOrFinishTurn();
+            OnCloseAuction += (_, _) => RollAgainOrFinishTurn();
+            OnDeclareWinner += DeclareWinner;
         }
 
         private static void RollAgainOrFinishTurn()
         {
+            Thread.Sleep(500);
             if (!WhoseTurn.InJail && PlayerCanRollAgain())
             {
                 OnDiceReadyForRolling.Invoke(GetDoubles());
             }
             else
             {
-                OnTurnCompleted.Invoke();
+                if(!WhoseTurn.HasEnoughMoney(0)) OnPlayerInDebt.Invoke(WhoseTurn);
+                else OnTurnCompleted.Invoke();
             }
+        }
+
+        private static void DeclareWinner(Player player)
+        {
+            Human.Terminal.Log($"{player.GetName()} ruthlessly smashed all his opponents and became the boss capital! ");
+            Human.Terminal.Log($"No pity for losers. lol ");
+            Thread.Sleep(5000);
+            //Human.Terminal.Log($"re open  ");
+        }
+        
+        private static async void StartAuction(Property property)
+        {
+
         }
 
         public static void Start()
         {
             foreach (var p in ActivePlayers)
-                p.SetStartingOccupation(15);
+                p.SetStartingOccupation(GameSettings.StartingPoint);
 
             OnStart?.Invoke();//don't tell me why
 
-            SetDiceState(DiceState.ReadyForRolling);
+            OnDiceReadyForRolling?.Invoke(GetDoubles()); //SetDiceState(DiceState.ReadyForRolling);
         }
-        //private static void DiceReadyForRolling(int times, Player whoseTurn)
-        //{
-        //    //SetDiceState(DiceState.ReadyForRolling);
-        //}
-        private static void PlayerTurnWhileInJail(Player bonk)
-        {
-            
-        }
-
+        
         private static void MovingOnPlace(Place place, Player player)
         {
             if (place is Board.Go go)
@@ -154,25 +161,12 @@ public partial class Monopoly
                 player.GetSalary(200);
             }
         }
-        static void LandingOnUnownedProperty(Property property)
+
+        private static void PayRental(Property property, Player victim, int rental)
         {
-            
-        }
-        static void PayRental(Property property, Player victim, int rental)
-        {
-            Console.WriteLine($"you landed on {property.GetName()}");
+            Human.Terminal.Log($"you landed on {property.GetName()}");
             new Player.PayRent(victim, property).Execute();
         }
-        
-        
-        //public static void SwitchTurnOrRollAgain()
-        //{
-        //    if (PlayerCanRollAgain()) SetDiceState(DiceState.ReadyForRolling);
-        //    else SwitchNextPlayerTurn();
-        //    
-        //    OnSwitchTurnOrRollAgain?.Invoke();
-        //}
-        //SetDeal
         
         public static void SwitchNextPlayerTurn()
         {
@@ -181,9 +175,8 @@ public partial class Monopoly
             NextPlayer();
             
             OnPlayerTurn?.Invoke(WhoseTurn);
-
             if (WhoseTurn.InJail) OnPlayerTurnWhileInJail?.Invoke(WhoseTurn);//window Jail.AskPlayerToGetOutOrStayInJail(); //window
-            else SetDiceState(DiceState.ReadyForRolling);
+            else OnDiceReadyForRolling?.Invoke(GetDoubles()); //SetDiceState(DiceState.ReadyForRolling);
             
             void NextPlayer()
             {
@@ -202,7 +195,6 @@ public partial class Monopoly
                         }
                     }
                 }
-               
             }
         }
     }

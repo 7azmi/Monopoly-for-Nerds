@@ -39,6 +39,8 @@ public partial class Monopoly
         public bool IsBot => _input is not Humanoid;
         public bool HasJailFreeCard { get; set; }
         public bool InJail => Board.Jail.InJail(this);
+
+        public bool IsBroke => !ActivePlayers.Contains(this);
         
         public string GetName() => _name;
         public void AddMoney(int amount)
