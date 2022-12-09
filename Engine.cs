@@ -54,7 +54,7 @@ public partial class Monopoly
         //public static Action<Player> OnPlayerTurn;
         public static Action<Player> OnPlayerTurnWhileInJail;
         public static Action<Player> OnPlayerDecidesToStayInJail;
-        public static Action<int> OnDiceReadyForRolling;
+        public static Action OnDiceReadyForRolling;
         public static Action<int, int> OnDiceShuffle;
         public static Action<int> OnDiceRolled;
         
@@ -114,7 +114,10 @@ public partial class Monopoly
             OnLandingOnMyProperty += (_, _) => RollAgainOrFinishTurn();
             OnPlayerDecidesToStayInJail += _ => RollAgainOrFinishTurn();
             OnCloseAuction += (_, _) => RollAgainOrFinishTurn();
+            OnAcceptOffer += (_, _, _) => RollAgainOrFinishTurn();
+            OnDeclineOffer += (_, _) => RollAgainOrFinishTurn();
             OnDeclareWinner += DeclareWinner;
+            OnDiceReadyForRolling += () => WhoseTurn.State |= PlayerState.ReadyForRolling;
         }
 
         private static void RollAgainOrFinishTurn()
@@ -122,7 +125,7 @@ public partial class Monopoly
             Thread.Sleep(500);
             if (!WhoseTurn.InJail && PlayerCanRollAgain())
             {
-                OnDiceReadyForRolling.Invoke(GetDoubles());
+                OnDiceReadyForRolling.Invoke();
             }
             else
             {
@@ -151,7 +154,7 @@ public partial class Monopoly
 
             OnStart?.Invoke();//don't tell me why
 
-            OnDiceReadyForRolling?.Invoke(GetDoubles()); //SetDiceState(DiceState.ReadyForRolling);
+            OnDiceReadyForRolling?.Invoke(); //SetDiceState(DiceState.ReadyForRolling);
         }
         
         private static void MovingOnPlace(Place place, Player player)
@@ -176,21 +179,25 @@ public partial class Monopoly
             
             OnPlayerTurn?.Invoke(WhoseTurn);
             if (WhoseTurn.InJail) OnPlayerTurnWhileInJail?.Invoke(WhoseTurn);//window Jail.AskPlayerToGetOutOrStayInJail(); //window
-            else OnDiceReadyForRolling?.Invoke(GetDoubles()); //SetDiceState(DiceState.ReadyForRolling);
+            else OnDiceReadyForRolling?.Invoke(); //SetDiceState(DiceState.ReadyForRolling);
             
             void NextPlayer()
             {
                 if (WhoseTurn == ActivePlayers.Last())
+                {
+                    WhoseTurn.State &= ~PlayerState.MyTurn;
                     WhoseTurn = ActivePlayers.First();
+                    WhoseTurn.State |= PlayerState.MyTurn; 
+                }
                 else
                 {
                     for (var i = 0; i < ActivePlayers.Count-1; i++)
                     {
                         if (WhoseTurn == ActivePlayers[i])
                         {
-                            WhoseTurn.PlayerState &= ~PlayerState.MyTurn;
+                            WhoseTurn.State &= ~PlayerState.MyTurn;
                             WhoseTurn = ActivePlayers[i + 1];
-                            WhoseTurn.PlayerState |= PlayerState.MyTurn;
+                            WhoseTurn.State |= PlayerState.MyTurn;
                             break;
                         }
                     }

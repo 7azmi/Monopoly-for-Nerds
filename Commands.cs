@@ -1,7 +1,9 @@
 ﻿using MonopolyTerminal.Enums;
+using MonopolyTerminal.Interfaces;
 using static MonopolyTerminal.Monopoly.Engine;
 using static MonopolyTerminal.Monopoly.Board;
 using static System.Console;
+
 namespace MonopolyTerminal;
 
 public partial class Monopoly
@@ -26,6 +28,7 @@ public partial class Monopoly
             {
                 if (!IsLegal()) return;
                 
+                
                 Dice.Roll();
             }
 
@@ -33,13 +36,19 @@ public partial class Monopoly
             {
                 if (!_player.MyTurn)
                 {
-                    Log("It's not your turn you dummy");
+                    WarningLog("It's not your turn you dummy");
+                    return false;
+                }
+                
+                if (_player.InJail)
+                {
+                    WarningLog("you need to get out of jail before rolling");
                     return false;
                 }
 
-                if (_player.InJail)
+                if (!_player.State.HasFlag(PlayerState.ReadyForRolling))
                 {
-                    Log("you need to get out of jail before rolling");
+                    WarningLog("you already have rolled the dice");
                     return false;
                 }
                 return true;
@@ -66,35 +75,19 @@ public partial class Monopoly
             {
                 if (!_player.MyTurn)
                 {
-                    Log("It's not your turn to buy");
+                    WarningLog("It's not your turn to buy");
                     return false;
                 }
 
                 if (!_player.HasEnoughMoney(_property.GetPrice()))
                 {
-                    Log("you don't have enough money, try bidding.");
+                    WarningLog("you don't have enough money, try bidding.");
                     return false;
                 }
                 return true;
             }
-        }//OnlandingOnUnownedProperty
-
-        // public static Command Pay(Player victim, PaymentReason reason, int value)
-        // {
-        //     switch (reason)
-        //     {
-        //         case PaymentReason.Rental:
-        //             return new PayRent(victim, victim._currentOccupation as Property);
-        //             break;
-        //         case PaymentReason.Bid:
-        //             
-        //             break;
-        //         case PaymentReason.BankFees:
-        //             break;
-        //     }
-        //
-        //     return null;
-        // } 
+        }
+        
         public class PayRent : Command
         {
             private Property _property;
@@ -138,12 +131,12 @@ public partial class Monopoly
             {
                 if (!_player.MyTurn)
                 {
-                    Log("hom many times I have to tell you it's not your turn?!");
+                    WarningLog("hom many times I have to tell you it's not your turn?!");
                     return false;
                 }
                 if (Dice.PlayerCanRoll())
                 {
-                    Log("you need to roll the dice before ending your turn");
+                    WarningLog("you need to roll the dice before ending your turn");
                     return false;
                 }
                 return true;
@@ -192,8 +185,8 @@ public partial class Monopoly
             {
                 if (_newBidding <= Auction.MostBid)
                 {
-                    if (_newBidding < Auction.MostBid) Log("you can't bid less you dummy");
-                    else Log("you need to bid more than current bid");
+                    if (_newBidding < Auction.MostBid) WarningLog("you can't bid less you dummy");
+                    else WarningLog("you need to bid more than current bid");
                     return false;
                 }
                 return true;
@@ -221,12 +214,12 @@ public partial class Monopoly
             {
                 if (!_player.MyTurn)
                 {
-                    Log("It's not your turn");
+                    WarningLog("It's not your turn");
                     return false;
                 }
                 if (!_player.HasEnoughMoney(_jailFee))//player balance should never gets in minus, you'll find some
                 {                                     //issues here otherwise.
-                    Log("you can't afford jail fees");
+                    WarningLog("you can't afford jail fees");
                     return false;
                 }
                 return true;
@@ -246,9 +239,14 @@ public partial class Monopoly
 
             public override bool IsLegal()
             {
+                if (!_player.MyTurn)
+                {
+                    
+                    return false;
+                }
                 if (Jail.GetPrisoner(_player).ExceededJailPeriod())//twice
                 {
-                    Log("you can't stay in jail for more than twice as you're free to go :)");
+                    WarningLog("you can't stay in jail for more than twice as you're free to go :)");
                     return false;
                 }
                 return true;//you can't stay in jail three times, that's why you get out for free the third time
@@ -277,24 +275,24 @@ public partial class Monopoly
             {
                 if (!_player._properties.Contains(_street))
                 {
-                    Log("you don't own this property");
+                    WarningLog("you don't own this property");
                     return false;
                 }
                 if (_street.MaxHouses)
                 {
-                    Log("you already have build 5 houses on " + _street.GetName());
+                    WarningLog("you already have build 5 houses on " + _street.GetName());
                     return false;
                 }
 
                 if (!_player.HasEnoughMoney(_street.GetHousePrice()))
                 {
-                    Log("you don't have enough money to buy a house here");
+                    WarningLog("you don't have enough money to buy a house here");
                     return false;
                 }
 
                 if (_street.IsMortgaged())
                 {
-                    Log("you need to unmortgage before building");
+                    WarningLog("you need to unmortgage before building");
                     return false;
                 }
 
@@ -327,12 +325,12 @@ public partial class Monopoly
             {
                 if (!_player._properties.Contains(_street))
                 {
-                    Log("you don't own this property");
+                    WarningLog("you don't own this property");
                     return false;
                 }
                 if (_street.NoHouses)
                 {
-                    Log("there is no house to sell here");
+                    WarningLog("there is no house to sell here");
                     return false;
                 }
                 //todo selling order
@@ -361,17 +359,17 @@ public partial class Monopoly
             {
                 if (!_player._properties.Contains(_property))
                 {
-                    Log("you don't own this property");
+                    WarningLog("you don't own this property");
                     return false;
                 }
                 if (_property is Street street && street.HasHouses)
                 {
-                    Log("you can't mortgage a street with houses, sell them first");
+                    WarningLog("you can't mortgage a street with houses, sell them first");
                     return false;
                 }
                 if (_property.IsMortgaged())
                 {
-                    Log($"{_property.GetName()} is already mortgaged, so sad");
+                    WarningLog($"{_property.GetName()} is already mortgaged, so sad");
                     return false;
                 }
                 return true;
@@ -398,17 +396,17 @@ public partial class Monopoly
             {
                 if (!_player._properties.Contains(_property))
                 {
-                    Log("you don't own this property");
+                    WarningLog("you don't own this property");
                     return false;
                 }
                 if (!_property.IsMortgaged())
                 {
-                    Log($"{_property.GetName()} is not mortgaged");
+                    WarningLog($"{_property.GetName()} is not mortgaged");
                     return false;
                 }
                 if (!_player.HasEnoughMoney(_property.MortgageValue))
                 {
-                    Log($"you don't have enough money to unmortgage this {_property.GetName()}");
+                    WarningLog($"you don't have enough money to unmortgage this {_property.GetName()}");
                     return false;
                 }
                 return true;
@@ -440,7 +438,8 @@ public partial class Monopoly
 
             public override bool IsLegal()
             {
-                Log("do you hear me???");
+                return true;//for now
+                WarningLog("do you hear me???");
                 ///can be legal only if
                 ///there are both-parts assets (money or properties at least)
                 ///target is chosen
@@ -453,8 +452,8 @@ public partial class Monopoly
                 
                 if (_player is null)
                 {
-                    Log("the computer still cannot identify your opponent from the given offer");
-                    Log("you need to include your opponent's special letter");
+                    WarningLog("the computer still cannot identify your opponent from the given offer");
+                    WarningLog("you need to include your opponent's special letter");
                     return false;
                 }
                 
@@ -466,7 +465,7 @@ public partial class Monopoly
                 if (!BothDoNotPresentStreetWithHouses())
                     return false;
                 
-                Log("yes you can");
+                WarningLog("yes you can");
 
                 return true;
 
@@ -488,29 +487,33 @@ public partial class Monopoly
                     
                     else if (bothSidesPresentMoneyOnly)
                     {
-                        if(_offer.MoneyToOffer < _offer.MoneyToRequest) Log("https://bit.ly/3K6D5Pj");
-                        else if (_offer.MoneyToOffer > _offer.MoneyToRequest) return true;//trolling
-                    }else if(offerorRequestsSomething && !offerorOffersSomething) Log("you can't demand something for nothing!");
+                        if(_offer.MoneyToOffer < _offer.MoneyToRequest) WarningLog("https://bit.ly/3K6D5Pj");
+                        else if (_offer.MoneyToOffer > _offer.MoneyToRequest){
+                            WarningLog("trolling");
+                            return true;//trolling
+}
+                    }else if(offerorRequestsSomething && !offerorOffersSomething) WarningLog("you can't demand something for nothing!");
                     else if (!offerorRequestsSomething && offerorOffersSomething)
                     {
-                        Log("!you can't demand nothing for something");
+                        WarningLog("!you can't demand nothing for something");
                         //return true;//trolling
                     }
 
-                    Log("offer structure error, try again");
+                    WarningLog("offer structure error, try again");
                     return false;
                 }
 
                 bool AreSelectedPropertiesOwnedByTheirOwners()
                 {
-                    var allRequestedPropertiesHaveTheSameOwner =
-                        _offer.PropertiesToRequest.All(property => property.GetOwner() == Target);
-                    var allOfferedPropertiesOwnedByOfferor =
+                    /*var allOfferedPropertiesOwnedByOfferor =
                         _offer.PropertiesToOffer.All(property => property.GetOwner() == WhoseTurn);
+                    var allRequestedPropertiesHaveTheSameOwner =
+                        _offer.PropertiesToRequest.All(property => property.GetOwner() == Target);*/
 
-                    if (allOfferedPropertiesOwnedByOfferor && allRequestedPropertiesHaveTheSameOwner) return true;
+                    if ((_offer.PropertiesToOffer == null ||  _offer.PropertiesToOffer.All(property => property.GetOwner() == WhoseTurn)) 
+                        && (_offer.PropertiesToRequest == null || _offer.PropertiesToRequest.All(property => property.GetOwner() == Target))) return true;
                     
-                    Log("Ownership error");//todo write possible errors
+                    WarningLog("Ownership error");//todo write possible errors
                     return false;
                     /*
                  * 
@@ -536,10 +539,10 @@ public partial class Monopoly
 
                     if (offereeHasEnoughMoney && offerorHasEnoughMoney) return true;
                     
-                    if(!offereeHasEnoughMoney) Log("your opponent can't accept a deal where you demand more money than he actually has");
-                    if(offerorHasEnoughMoney) Log("you can't offer money you don't have :)");
+                    if(!offereeHasEnoughMoney) WarningLog("your opponent can't accept a deal where you demand more money than he actually has");
+                    if(offerorHasEnoughMoney) WarningLog("you can't offer money you don't have :)");
                     
-                    Log("hello2");
+                    WarningLog("hello2");
                     return false;
                 }
 
@@ -552,10 +555,10 @@ public partial class Monopoly
                         _offer.PropertiesToRequest.Any(property => property is Street s && s.HasHouses);
 
                     if (!offerorOffersStreetWithHouses && !offerorRequestsStreetWithHouses) return true;
-                    if(offerorOffersStreetWithHouses) Log("you can't offer nor request a street invested with houses. are you dumb?");
-                    if(offerorRequestsStreetWithHouses) Log("you can't offer nor request a street invested with houses");
+                    if(offerorOffersStreetWithHouses) WarningLog("you can't offer nor request a street invested with houses. are you dumb?");
+                    if(offerorRequestsStreetWithHouses) WarningLog("you can't offer nor request a street invested with houses");
 
-                    Log("hello3");
+                    WarningLog("hello3");
 
                     return false;
                 }
@@ -674,9 +677,9 @@ public partial class Monopoly
             }
         }
 
-        static void Log(string line)
+        static void WarningLog(string line)
         {
-            Human.Terminal.Log(line);
+            Human.Terminal.WarningLog(line);
         }
     }
 }

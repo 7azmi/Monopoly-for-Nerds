@@ -18,14 +18,14 @@ PrintBoard();
 
 LateInit();
 
-ConnectGameLogicWithCommands();//terminal side
+ConnectGameLogicWithCommands();//terminal thing
 
-var m = new Monopoly(new GameSettings(
+var m = new Monopoly(new Terminal(), new GameSettings(
     new []
     {
-        new Player("nGAGEOnline", ConsoleColor.Red, 1500, new Shooter(new Terminal())),
-        new Player("HuHu", ConsoleColor.Yellow, 1500, new Shooter(new Terminal())),
-        new Player("Shooter", ConsoleColor.Blue, 1500, new Shooter(new Terminal())),
+        new Player("nGAGEOnline", ConsoleColor.Red, 1500, new Shooter()),
+        new Player("HuHu", ConsoleColor.Yellow, 1500, new Shooter()),
+        new Player("Shooter", ConsoleColor.Blue, 1500, new Shooter()),
         //new Player("Ahmed", ConsoleColor.Cyan, 1500, true),
         //new Monopoly.Player("Ahmed", ConsoleColor.Green, 1500, true)
     }, startingPoint: 15));
@@ -41,43 +41,13 @@ ReadKey();
 void ConnectGameLogicWithCommands()
 {
     OnPlayerTurn += player => player.GetInput().OnTurn();
-    OnDiceReadyForRolling += (_) => WhoseTurn.GetInput().OnDiceReady();
+    OnDiceReadyForRolling += () => WhoseTurn.GetInput().OnDiceReady();
     OnPlayerTurnWhileInJail += (_) => WhoseTurn.GetInput().OnInJail();
-    //OnRentalPaid += (_, _, _) => 
-    //OnPlayerDecidesToStayInJail += _ => AskPlayerToProceedPlaying();
-    //OnRentalDue += (_, player, amount) => AskPlayerToPay(player, amount, PaymentReason.Rental);
     OnPlayerInDebt += (player) => WhoseTurn.GetInput().OnDoesNotHaveEnoughMoney();
-    
-    
-    //OnBuyProperty += (_, _) => AskPlayerToProceedPlaying();
-    //OnLandingOnMyProperty += (_, _) => AskPlayerToProceedPlaying(); 
-    //OnRentalPaid += (_, _, _) => AskPlayerToProceedPlaying();
-    //OnCloseAuction += (_, _) => AskPlayerToProceedPlaying();
-    //OnLandingCompleted +=(place) => WhoseTurn.GetInput().
     OnLandingOnUnownedProperty += (property) => WhoseTurn.GetInput().OnBuyOrBid(property);
     OnTurnCompleted += () => WhoseTurn.GetInput().OnTurnCompleted();
-    
-    //OnAuction += AskPlayersToBid;
-    //OnOffering += AskPlayerToAcceptOrDeclineOffer;
-    //OnAcceptOffer += (_, _, _) => AskPlayerToProceedPlaying();
-    //OnDeclineOffer += (_, _) => AskPlayerToProceedPlaying();
-
-    // OnPlayerTurnWhileInJail += AskPlayerToGetOutOrStay;
-    // OnPlayerDecidesToStayInJail += _ => AskPlayerToProceedPlaying();
-    // OnDiceReadyForRolling += AskPlayerToRoll;
-    // //OnRentalDue += (_, player, amount) => AskPlayerToPay(player, amount, PaymentReason.Rental);
-    // OnPlayerInDebt += (player, i) => AskPlayerToDivestForDuePaymentOrDeclareBankruptcy(player);
-    // OnBuyProperty += (_, _) => AskPlayerToProceedPlaying();
-    // OnLandingOnMyProperty += (_, _) => AskPlayerToProceedPlaying(); 
-    // OnRentalPaid += (_, _, _) => AskPlayerToProceedPlaying();
-    // OnCloseAuction += (_, _) => AskPlayerToProceedPlaying();
-    // OnLandingCompleted +=(_, _) => AskPlayerToProceedPlaying();//todo refactor later
-    // OnLandingOnUnownedProperty += AskPlayerToBuyPropertyOrPutItOnAuction;
-    // OnAuction += AskPlayersToBid;
-    // OnOffering += AskPlayerToAcceptOrDeclineOffer;
-    // OnAcceptOffer += (_, _, _) => AskPlayerToProceedPlaying();
-    // OnDeclineOffer += (_, _) => AskPlayerToProceedPlaying();
-
+    OnOffering += (offeror, offeree, offer) => offeree.GetInput().OnReceiveDeal(offeror, offeree, offer);
+}
 
     #region Extract functions later
 
@@ -358,98 +328,3 @@ void ConnectGameLogicWithCommands()
 // }
 
     #endregion
-
-    #region Lovely checkers //don't touch these warriors
-
-    bool TryExecuteDivestPropertyCommand(Player player, string line)
-    {
-        var isLegalCommand = TryGetDivestPropertyCommand(player, line, out var command);
-        if (isLegalCommand) command.Execute();
-
-        return isLegalCommand;
-
-        bool TryGetDivestPropertyCommand(Player player, string line, out Command command)
-        {
-            command = null;
-
-            string[] commands = { "sell house", "mort" }; //followed by digits
-
-            if (!TryToGetDigits(line, out var i) || !InBounds(i)) return false;
-
-            if (line.Contains(commands[0]) && TryToGetStreet(i, out var street))
-                command = new SellHouse(player, street);
-            else if (line.Contains(commands[1]) && TryToGetProperty(i, out var property))
-                command = new MortgageProperty(player, property);
-
-            return command != null ? command.IsLegal() : false;
-
-        }
-    }
-
-    bool TryExecuteManagePropertyCommand(Player player, string line)
-    {
-        var isLegalCommand = TryGetPropertyManagementCommand(player, line, out var command);
-        if (isLegalCommand) command.Execute();
-
-        return isLegalCommand;
-
-        bool TryGetPropertyManagementCommand(Player player, string line, out Command command)
-        {
-            command = null;
-
-            string[] commands = { "buy house", "sell house", "unmort", "mort" }; //followed by digits
-
-            if (!TryToGetDigits(line, out var i) || !InBounds(i)) return false;
-
-            var isStreet = TryToGetStreet(i, out var street);
-
-            if (line.Contains(commands[0]) && isStreet) command = new BuildHouse(player, street);
-            else if (line.Contains(commands[1]) && isStreet) command = new SellHouse(player, street);
-
-            var isProperty = TryToGetProperty(i, out var property);
-
-            if (line.Contains(commands[2]) && isProperty) command = new UnmortgageProperty(player, property);
-            else if (line.Contains(commands[3]) && isProperty) command = new MortgageProperty(player, property);
-
-
-            return command != null ? command.IsLegal() : false;
-        }
-    }
-
-    bool TryToGetProperty(int i, out Property property)
-    {
-        property = InBounds(i) && GetPlace(i) is Property ? GetPlace(i) as Property : null;
-
-        if (property == null) WriteLine(GetPlace(i).GetName() + " is not a property");
-
-        return property != null;
-    }
-
-    bool TryToGetStreet(int i, out Street street)
-    {
-        street = InBounds(i) && GetPlace(i) is Street ? GetPlace(i) as Street : null;
-
-        if (street == null) WriteLine(GetPlace(i).GetName() + " is not a street you dumb");
-        return street != null;
-    }
-
-    bool InBounds(int i) //board length
-    {
-        if (i >= 0 && i < 40) return true;
-
-        WriteLine("wrong index");
-        return false;
-    }
-
-    bool TryToGetDigits(string line, out int value)
-    {
-        var areDigits = int.TryParse(new String(line.Where(char.IsDigit).ToArray()), out var digits);
-
-        //if(!areDigits) 
-        value = digits;
-
-        return areDigits;
-    }
-}
-
-#endregion

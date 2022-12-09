@@ -25,7 +25,7 @@ public static class Bank//to be modified
     {
         var jail = GetPlace(10) as Jail;
         
-        jail.GetemIn(player);
+        jail.GetHimIn(player);
         player.SetCurrentOccupation(jail);
         
         Log($"{player.GetName()} went to jail");
@@ -46,7 +46,7 @@ public static class Bank//to be modified
 
         OnPlayerGetsOutOfJail?.Invoke(player);
         
-        OnDiceReadyForRolling?.Invoke(GetDoubles());//SetDiceState(DiceState.ReadyForRolling);
+        OnDiceReadyForRolling?.Invoke();//SetDiceState(DiceState.ReadyForRolling);
     }
 
     public static void StayInJail(this Player player)
@@ -208,21 +208,26 @@ public static class Bank//to be modified
 
             OnPlayerTurn?.Invoke(WhoseTurn);
             if (WhoseTurn.InJail) OnPlayerTurnWhileInJail?.Invoke(WhoseTurn); //window Jail.AskPlayerToGetOutOrStayInJail(); //window
-            else OnDiceReadyForRolling.Invoke(GetDoubles()); //SetDiceState(DiceState.ReadyForRolling);    
+            else OnDiceReadyForRolling.Invoke(); //SetDiceState(DiceState.ReadyForRolling);    
             
             void NextPlayer()
             {
                 if (WhoseTurn == ActivePlayers.Last())
+                {
+                    WhoseTurn.State &= ~PlayerState.MyTurn;
                     WhoseTurn = ActivePlayers.First();
+                    WhoseTurn.State |= PlayerState.MyTurn;
+                }
+                    
                 else
                 {
                     for (var i = 0; i < ActivePlayers.Count - 1; i++)
                     {
                         if (WhoseTurn == ActivePlayers[i])
                         {
-                            WhoseTurn.PlayerState &= ~PlayerState.MyTurn;
+                            WhoseTurn.State &= ~PlayerState.MyTurn;
                             WhoseTurn = ActivePlayers[i + 1];
-                            WhoseTurn.PlayerState |= PlayerState.MyTurn;
+                            WhoseTurn.State |= PlayerState.MyTurn;
                             break;
                         }
                     }
@@ -257,6 +262,7 @@ public static class Bank//to be modified
     
     public static void DeclineOffer(this Player offeree, Player offeror)
     {
+        Human.Terminal.Log($"{offeree.GetName()} declined {offeror.GetName()} offer");
         OnDeclineOffer?.Invoke(offeree, offeror);
     }
 

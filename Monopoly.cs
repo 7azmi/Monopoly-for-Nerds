@@ -4,6 +4,8 @@
 
 
 using System.Reflection;
+using MonopolyTerminal.Enums;
+using MonopolyTerminal.Interfaces;
 using static System.Threading.Tasks.Task;
 using static MonopolyTerminal.Monopoly.Board;
 using static MonopolyTerminal.Monopoly.Engine;
@@ -20,8 +22,12 @@ public partial class Monopoly
     public static List<Player> ActivePlayers;
     public static Player[] AllPlayers { get; private set; }
     public static Player WhoseTurn { get; set; }
-    public Monopoly(GameSettings gameSettings)
+    public static IPlatform Platform { get; private set; }
+    
+    public Monopoly(IPlatform platform, GameSettings gameSettings)
     {
+        Platform = platform;
+        
         GameSettings = gameSettings;
         
         AllPlayers = gameSettings.Players;
@@ -30,7 +36,9 @@ public partial class Monopoly
 
         //ActivePlayers = _allPlayers.ToList();
 
-        WhoseTurn = ActivePlayers.First();
+        WhoseTurn = ActivePlayers.First();//may removed it
+
+        ActivePlayers.First().State |= PlayerState.MyTurn;
         
         Init(this);
         

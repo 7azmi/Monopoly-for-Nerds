@@ -3,10 +3,10 @@
 [Flags]
 public enum PlayerState
 {
-    Dead = 0, 
-    MyTurn = 1,
-    ReadyForRolling = 2,
-    InJail = 4,
-    Moving = 8,
-    Negotiating = 16
+    Active = 1, 
+    MyTurn = 2,
+    ReadyForRolling = 4,
+    InJail = 8,
+    Moving = 16,
+    Negotiating = 32
 }

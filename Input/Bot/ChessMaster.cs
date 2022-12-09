@@ -5,13 +5,19 @@ using static MonopolyTerminal.Monopoly;
 using static MonopolyTerminal.Monopoly.Player;
 using static MonopolyTerminal.Monopoly.Player.SetOffer;
 using static MonopolyTerminal.TypingSimulator;
+using static MonopolyTerminal.Monopoly.Board;
 
 namespace MonopolyTerminal;
 
 
-public class Shooter : Input
+public class ChessMaster : Input
 {
 
+
+    private List<Player> OtherActivePlayers => ActivePlayers.Except(new[] { Me }).ToList();
+    
+    
+    
     public override async Task OnTurn()
     {
         
@@ -24,24 +30,85 @@ public class Shooter : Input
 
     public override async Task OnBuyOrBid(Board.Property property)
     {
-        //todo change this logic
-        if(property.GetPrice() <= WhoseTurn.GetMoney()) new BuyProperty(property).Execute();
+        if(property is Company) new OpenAuction(property).Execute();
+        else if (WhoseTurn.HasEnoughMoney(property.GetPrice()))
+        {
+            if (property is Street s)
+                if(PotentialStreetSet(s)) new BuyProperty(property).Execute();
+                else new OpenAuction(property).Execute();
+             if(property is Railroad r) new BuyProperty(property).Execute();
+        } 
         else new OpenAuction(property).Execute();
+
+        bool PotentialStreetSet(Street s)
+        {
+            return s.GetStreetSet().All(s => !s.HasOwner || s.GetOwner() == WhoseTurn);
+        }
+        /*bool ShouldIBuyRailRoad(Railroad r)
+        {
+            return r.GetStreetSet().All(s => !s.HasOwner || s.GetOwner() == WhoseTurn);
+        }*/
     }
     public override async Task OnBidOrFold(Player bidder, int mostBid, CancellationToken token)
     {
         var property = WhoseTurn.GetCurrentOccupation() as Board.Property;//must be
         var newBid = mostBid + new Random().Next(5, 50);
 
-        await Task.Delay(new Random().Next(200, 500), token);
-        //Console.WriteLine($"{bidder.GetName()} bids {newBid}");
+        await Task.Delay(new Random().Next(300, 1000), token);
+        
         var isLastBidder = Auction.MostBidder == bidder;
         if (!isLastBidder && newBid <= property.GetPrice() / 2 && bidder.HasEnoughMoney(newBid))
             new Bid(bidder, newBid).Execute();
     }
     public override async Task OnTurnCompleted()
     {
+        BuildHouses();
+        try
+        {
+        SetDeal();
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+        
+        Human.Terminal.Log("hey1");
         new EndTurn(WhoseTurn).Execute();
+        Human.Terminal.Log("hey2");
+    }
+
+    private void SetDeal()
+    {
+        var missingTooth = Me.Streets.Where(street => !street.IsCompleteSetProperty
+                                                      && street.GetStreetSet().Where(street1 => street1.GetOwner() != Me).ToList().Count == 1);//hope it works
+        var stolenTooth = Me.Streets.Where(street => !street.IsCompleteSetProperty
+                                                     && street.GetStreetSet().
+                                                         Where(street1 => street1.GetOwner() != Me || street1.GetOwner() == null).ToList().Count == 1);
+        var offer = new SetOffer(OtherActivePlayers.First(), new Offer(new []{Me.Properties.First()}, null, 500, 10));
+
+        try
+        {
+        if(offer.IsLegal()) offer.Execute();
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+
+    private void BuildHouses()
+    {
+        var hasSet = WhoseTurn.HasSet;
+        if (!hasSet) return; 
+        foreach (var street in WhoseTurn.Streets)
+        {
+            if (street.PlayerCanBuildHouseHere && WhoseTurn.HasEnoughMoney(street.GetHousePrice() * 3));
+            new BuildHouse(WhoseTurn, street).Execute();
+        }
     }
 
     public override async Task OnReceiveDeal(Player offeror, Player offeree, Offer offer)
@@ -100,8 +167,7 @@ public class Shooter : Input
             return false;//so sad
         } 
     }
-
-
+    
     // public Command OnLandingOnOwnedProperty(Player whoseTurn, Board.Property property, int bill)
     // {
     //     if (whoseTurn.GetMoney() >= bill) return new PayRent(whoseTurn, property);
