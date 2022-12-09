@@ -6,7 +6,7 @@ public partial class Monopoly
 {
     public static partial class Board
     {
-        private static Place[] _places = new Place[]
+        private static Place[] _places = 
         {
             new Go(0),
             new Street(1,"street 1",60, 50, new[] {2000, 10, 30, 90, 160, 250}, 0),
@@ -80,60 +80,6 @@ public partial class Monopoly
             }
         }
 
-        public abstract class Property : Place
-        {
-            protected Property(int index, int price) : base(index)
-            {
-                Price = price;
-            }
-            
-            private bool _mortgaged;
-            private Player _owner;
-            protected int Price;
-            public bool Owned => GetOwner() != null;
-            public int MortgageValue => Price / 2;
-            public int UnmortgageValue => (int)((float)MortgageValue * 1.1f);//that's what it's all about
-
-                
-            public override void Land()
-            {
-                base.Land();
-                
-                LandOnProperty();
-            }
-            private void LandOnProperty()
-            {
-                if (Owned)
-                {
-                    if (GetOwner() != WhoseTurn)
-                    {
-                        if(!IsMortgaged()) RequestRental();
-                        else OnLandingCompleted.Invoke(this);
-                    }
-                    else OnLandingOnMyProperty?.Invoke(WhoseTurn, this);//home sweet home
-                }
-                else OnLandingOnUnownedProperty?.Invoke(this);
-            }
-            private void RequestRental() => OnRentalDue?.Invoke(this, WhoseTurn, GetRentalValue());
-            public void SetOwner(Player newOwner) => _owner = newOwner;
-            public Player GetOwner() => _owner;
-            public bool HasOwner => _owner != null;
-            public int GetPrice() => Price;
-            public bool IsMortgaged() => _mortgaged;
-            public bool CanBeMortgaged() => !IsMortgaged();
-            public void Mortgage()
-            {
-                _mortgaged = true;
-            }
-            public bool CanBeUnmortgaged(Player player) => player.HasEnoughMoney(UnmortgageValue) && IsMortgaged();
-            public abstract int GetRentalValue();
-
-            public void Unmortgage()
-            {
-                _mortgaged = false;
-            }
-        }
-        
         public class Go : Place
         {
             public Go(int index): base(index)
@@ -146,73 +92,6 @@ public partial class Monopoly
                 base.Land();
                 
                 OnLandingCompleted?.Invoke(this);
-            }
-        }
-
-        public class Street : Property
-        {
-            public Street(int index, string name, int price, int housePrice, int[] rental, int setIndex) : base(index, price)
-            {
-                Name = name;
-                Price = price;
-                _housePrice = housePrice;
-                _rental = rental;
-                _setIndex = setIndex;
-            }
-            private int _housePrice;
-            private int _houses = 0; public bool NoHouses => _houses == 0; public bool MaxHouses => _houses == 5; 
-            public bool HasHouses => _houses > 0; public int HouseCount => _houses;
-
-            private int _setIndex;
-            public int SetIndex => _setIndex;
-
-            public Street[] GetStreetSet()
-            {
-                var set = new List<Street>();
-                foreach (var place in _places)
-                {
-                    if (place is Street s && s._setIndex == _setIndex) set.Add(s);
-                }
-                return set.ToArray();
-            }
-
-            private int[] _rental; //6
-            public new bool CanBeMortgaged() => !IsMortgaged() && NoHouses;
-
-
-
-            public int[] Rentals => _rental;
-
-            public bool PlayerCanBuildHouseHere => GetOwner().HasEnoughMoney(_housePrice) 
-                                                   && IsCompleteSetProperty 
-                                                   && HouseCanBeBuiltOrderRule;
-            public bool HouseCanBeBuiltOrderRule =>
-                GetStreetSet().Any(street => street._houses > _houses && street != this)
-                || GetStreetSet().All(street => street._houses == _houses);
-            
-            //public bool HouseOrder
-
-            public bool IsCompleteSetProperty => GetStreetSet().All(s => s.Owned && s.GetOwner() == GetOwner());
-            public override int GetRentalValue()
-            {
-                return _rental[_houses];
-            }
-            public void AddHouse() => _houses++;//yeah!
-            public int GetHousePrice() => _housePrice;
-
-            public void RemoveHouse() => _houses--;
-
-            public Player GetSetOwner()
-            {
-                var set = GetStreetSet();
-                Player owner = GetStreetSet().First().GetOwner();
-                
-                foreach (var street in set)
-                {
-                    if (street.GetOwner() == null || street.GetOwner() != owner) return null;
-                }
-
-                return owner;
             }
         }
 
@@ -233,109 +112,6 @@ public partial class Monopoly
                 base.Land();
                 
                 OnLandingCompleted?.Invoke(this);
-            }
-        }
-
-        public class Railroad : Property
-        {
-            public Railroad(int index, string name, int price) : base(index, price)
-            {
-                Name = name;
-            }
-            public override int GetRentalValue()
-            {
-                var rental = 25;
-                for (var i = 5; i <= 35; i += 10)
-                {
-                    var railroad = _places[i] as Railroad;
-                    if (railroad.GetOwner() == GetOwner() && railroad != this)
-                    {
-                        rental *= 2;
-                    }
-                }
-                return rental;
-            }
-        }
-
-        public class Jail : Place
-        {
-            private static List<Prisoner> _prisoners = new ();//may change this to dictionary
-            
-            public Jail(int index) : base(index)
-            {
-                Name = "Jail";
-                _prisoners = new List<Prisoner>();
-            } 
-            public void GetHimIn(Player player)
-            {
-                _prisoners.Add(new Prisoner(player));
-                player.State &= ~PlayerState.InJail;
-            }
-            public void GetemOut(Player player)
-            {
-                var prisoner = _prisoners.FirstOrDefault(prisoner => prisoner.GetPrisoner() == player);
-                _prisoners.Remove(prisoner);
-                
-                player.State |= ~PlayerState.InJail;
-            }
-
-            public static Prisoner GetPrisoner(Player player)
-            {
-                //prisoners.FirstOrDefault(prisoner => prisoner.GetPrisoner() == player);//don't use code you don't know
-                foreach (var prisoner in _prisoners)
-                {
-                    if (prisoner.GetPrisoner() == player)
-                    {
-                        return prisoner;
-                    }
-                }
-
-                return _prisoners.Last();//won't reach here anyway.
-            }
-
-            public static bool InJail(Player player) => _prisoners.Any(p => p.GetPrisoner() == player);
-
-            public override void Land()
-            {
-                base.Land();
-                
-                OnLandingCompleted?.Invoke(this);
-            }
-
-            public static void StayInJail(Player player) =>GetPrisoner(player).Stay();
-            public class Prisoner
-            {
-                private Player _player;
-                private int _times = 0;
-                public Prisoner(Player prisoner)
-                {
-                    _player = prisoner;
-                }
-                
-                public Player GetPrisoner() => _player;
-                public int GetHowManyRoundsPlayerIsInJail() => _times;
-
-                public void Stay()
-                {
-                    _times++;
-                } 
-                public bool ExceededJailPeriod() => _times >= 2;
-            }
-        }
-
-        public class Company : Property
-        {
-            public Company(int index, string name, int price) : base(index, price)
-            {
-                Name = name;
-            }
-            public override int GetRentalValue()
-            {
-                var elec = (Property) _places[12];
-                var water = (Property) _places[28];
-
-                if (elec.GetOwner() == water.GetOwner()) return Dice.SumDice() * 10;
-                else return Dice.SumDice() * 4;
             }
         }
 
