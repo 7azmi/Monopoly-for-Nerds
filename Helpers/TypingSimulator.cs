@@ -1,7 +1,7 @@
 ﻿///Created by nGAGEOnline
 ///https://www.youtube.com/c/MMOJunkie
 /// 
-namespace MonopolyTerminal;
+namespace Monopoly;
 
 using static Console;
 public static class TypingSimulator

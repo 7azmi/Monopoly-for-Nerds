@@ -1,17 +1,17 @@
 ﻿using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Text.RegularExpressions;
-using MonopolyTerminal;
-using MonopolyTerminal.Enums;
-using MonopolyTerminal.Helpers;
-using MonopolyTerminal.Human;
-using static MonopolyTerminal.Monopoly;
-using static MonopolyTerminal.Monopoly.Engine;
-using static MonopolyTerminal.Monopoly.Board;
+using Monopoly;
+using Monopoly.Enums;
+using Monopoly.Helpers;
+using Monopoly.Human;
+using static Monopoly.Monopoly;
+using static Monopoly.Monopoly.Engine;
+using static Monopoly.Monopoly.Board;
 using static System.Console;
-using static MonopolyTerminal.Printer;
-using static MonopolyTerminal.Monopoly.Player;
-using static MonopolyTerminal.Monopoly.Auction;
+using static Monopoly.Printer;
+using static Monopoly.Monopoly.Player;
+using static Monopoly.Monopoly.Auction;
 
 //Console.WriteLine((1 + 39) % 40);
 PrintBoard();
@@ -20,17 +20,17 @@ LateInit();
 
 ConnectGameLogicWithCommands();//terminal thing
 
-var m = new Monopoly(new Terminal(), new GameSettings(
+var m = new Monopoly.Monopoly(new Terminal(), new GameSettings(
     new []
     {
-        new Player("nGAGEOnline", ConsoleColor.Red, 1500, new Shooter()),
+        new Player("nGAGEOnline", ConsoleColor.Red, 1500, new ChessMaster()),
         new Player("HuHu", ConsoleColor.Yellow, 1500, new Shooter()),
         new Player("Shooter", ConsoleColor.Blue, 1500, new Shooter()),
         //new Player("Ahmed", ConsoleColor.Cyan, 1500, true),
         //new Monopoly.Player("Ahmed", ConsoleColor.Green, 1500, true)
     }, startingPoint: 15));
 
-MonopolyTerminal.Human.Terminal.Log("Finished");
+Platform.Log("Finished");
 CursorVisible = true;
 ReadKey();
 ReadKey();

@@ -1,4 +1,4 @@
-﻿namespace MonopolyTerminal;
+﻿namespace Monopoly;
 
 public readonly struct Coord
 {

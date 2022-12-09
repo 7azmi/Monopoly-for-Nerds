@@ -1,4 +1,4 @@
-﻿namespace MonopolyTerminal;
+﻿namespace Monopoly;
 using static Monopoly.Engine;
 using static Monopoly.Board;
 using static Monopoly;
@@ -323,7 +323,7 @@ public static class Printer
     Border(); Cell(39); Border();
     Console.WriteLine();
 
-    //Human.Terminal.Log("|11-----|                                                                       |39-----|");
+    //Log("|11-----|                                                                       |39-----|");
     Border(); PropertyInfo(11); Border();
     Console.Write("                                                                       ");
     Border(); PropertyInfo(39); Border();
@@ -684,5 +684,5 @@ public static class Printer
             char GetPlayerCharacter(Player player) => player.GetName()[0];
         }
     }
-    //public static void PrintLine(string log) => Human.Terminal.PrintLine(log);
+    //public static void PrintLine(string log) => PrintLine(log);
 }

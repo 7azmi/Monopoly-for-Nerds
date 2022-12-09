@@ -1,4 +1,4 @@
-﻿namespace MonopolyTerminal;
+﻿namespace Monopoly;
 
 using static Monopoly.Board;
 using static Monopoly.Engine;

@@ -1,5 +1,5 @@
 ﻿
-using MonopolyTerminal;
+using Monopoly;
 
 public class ConsoleBlock
 {

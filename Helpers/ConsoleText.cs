@@ -1,6 +1,6 @@
 ﻿
 using System.Data;
-using MonopolyTerminal;
+using Monopoly;
 
 public class ConsoleText : IText<ITextStyle<ConsoleColor>>
 {

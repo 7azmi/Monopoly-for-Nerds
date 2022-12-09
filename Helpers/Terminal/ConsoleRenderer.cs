@@ -1,6 +1,6 @@
-﻿using MonopolyTerminal.Enums;
+﻿using Monopoly.Enums;
 
-namespace MonopolyTerminal.Terminal;
+namespace Monopoly.Terminal;
 
 public class ConsoleRenderer : IConsoleRenderer
 {

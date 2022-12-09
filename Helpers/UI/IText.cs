@@ -1,4 +1,4 @@
-﻿using MonopolyTerminal;
+﻿using Monopoly;
 
 public interface IText<T>
 {

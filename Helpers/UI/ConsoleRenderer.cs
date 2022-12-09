@@ -1,7 +1,7 @@
-﻿using MonopolyTerminal.Enums;
+﻿using Monopoly.Enums;
 using static System.Console;
 
-namespace MonopolyTerminal;
+namespace Monopoly;
 
 // ═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬
 // ─│┌┐└┘├┬┴┼

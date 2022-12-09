@@ -10,4 +10,12 @@
         <AssemblyName>MonopolyTerminal</AssemblyName>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="Monopoly\Monopoly.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Input" />
+    </ItemGroup>
+
 </Project>
